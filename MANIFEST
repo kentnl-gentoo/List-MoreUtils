@@ -1,13 +1,15 @@
-MoreUtils.xs
 Changes
+dhash.h
+lib/List/MoreUtils.pm
+LICENSE
 Makefile.PL
-MANIFEST
+MANIFEST			This list of files
+MoreUtils.xs
+multicall.h
 README
-t/0_pod.t
-t/0_pod_coverage.t
 t/List-MoreUtils-pp.t
 t/List-MoreUtils.t
-lib/List/MoreUtils.pm
+xt/meta.t
+xt/pmv.t
+xt/pod.t
 META.yml                                 Module meta-data (added by MakeMaker)
-dhash.h
-multicall.h

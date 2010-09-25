@@ -1,10 +1,10 @@
 --- #YAML:1.0
 name:               List-MoreUtils
-version:            0.25_02
+version:            0.23_01
 abstract:           Provide the stuff missing in List::Util
 author:
     - Tassilo von Parseval <tassilo.von.parseval@rwth-aachen.de>
-license:            unknown
+license:            perl
 distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
@@ -15,7 +15,7 @@ no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.50
+generated_by:       ExtUtils::MakeMaker version 6.56
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4

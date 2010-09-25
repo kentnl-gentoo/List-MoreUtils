@@ -2,34 +2,32 @@ package List::MoreUtils;
 
 use 5.00503;
 use strict;
-
-require Exporter;
-require DynaLoader;
-
+use Exporter   ();
+use DynaLoader ();
 
 use vars qw($VERSION @ISA @EXPORT_OK %EXPORT_TAGS);
-@ISA = qw(Exporter DynaLoader);
-
-%EXPORT_TAGS = ( 
-    all => [ qw(any all none notall true false firstidx first_index lastidx
-		last_index insert_after insert_after_string apply after after_incl before
-		before_incl indexes firstval first_value lastval last_value each_array
-		each_arrayref pairwise natatime mesh zip uniq minmax part bsearch) ],
-);
-
-@EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-$VERSION = '0.25_02';
+BEGIN {
+    $VERSION     = '0.23_01';
+    $VERSION     = eval $VERSION;
+    @ISA         = qw(Exporter DynaLoader);
+    %EXPORT_TAGS = ( 
+        all => [ qw(
+            any all none notall true false firstidx first_index lastidx
+            last_index insert_after insert_after_string apply after after_incl before
+            before_incl indexes firstval first_value lastval last_value each_array
+            each_arrayref pairwise natatime mesh zip uniq minmax part
+        ) ],
+    );
+    @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+}
 
 eval {
-    local $ENV{PERL_DL_NONLAZY} = 0 if $ENV{PERL_DL_NONLAZY};
+    local $ENV{PERL_DL_NONLAZY} = $ENV{PERL_DL_NONLAZY} ? 0 : $ENV{PERL_DL_NONLAZY};
     bootstrap List::MoreUtils $VERSION;
     1;
-} if not $ENV{LIST_MOREUTILS_PP};
+} unless $ENV{LIST_MOREUTILS_PP};
 
-eval <<'EOP' if not defined &any;
-
-require POSIX;
+eval <<'EOP' unless defined &any;
 
 sub any (&@) {
     my $f = shift;
@@ -39,7 +37,7 @@ sub any (&@) {
     }
     return 0;
 }
-    
+
 sub all (&@) {
     my $f = shift;
     return if ! @_;
@@ -51,7 +49,7 @@ sub all (&@) {
 
 sub none (&@) {
     my $f = shift;
-    return 1 if ! @_;
+    return if ! @_;
     for (@_) {
 	return 0 if $f->();
     }
@@ -132,44 +130,38 @@ sub apply (&@) {
     wantarray ? @values : $values[-1];
 }
 
-sub after (&@)
-{
+sub after (&@) {
     my $test = shift;
     my $started;
     my $lag;
     grep $started ||= do { my $x=$lag; $lag=$test->(); $x},  @_;
 }
 
-sub after_incl (&@)
-{
+sub after_incl (&@) {
     my $test = shift;
     my $started;
     grep $started ||= $test->(), @_;
 }
 
-sub before (&@)
-{
+sub before (&@) {
     my $test = shift;
     my $keepgoing=1;
     grep $keepgoing &&= !$test->(),  @_;
 }
 
-sub before_incl (&@)
-{
+sub before_incl (&@) {
     my $test = shift;
     my $keepgoing=1;
     my $lag=1;
     grep $keepgoing &&= do { my $x=$lag; $lag=!$test->(); $x},  @_;
 }
 
-sub indexes (&@)
-{
+sub indexes (&@) {
     my $test = shift;
     grep {local *_=\$_[$_]; $test->()} 0..$#_;
 }
 
-sub lastval (&@)
-{
+sub lastval (&@) {
     my $test = shift;
     my $ix;
     for ($ix=$#_; $ix>=0; $ix--)
@@ -182,8 +174,7 @@ sub lastval (&@)
     return undef;
 }
 
-sub firstval (&@)
-{
+sub firstval (&@) {
     my $test = shift;
     foreach (@_)
     {
@@ -192,8 +183,7 @@ sub firstval (&@)
     return undef;
 }
 
-sub pairwise(&\@\@)
-{
+sub pairwise(&\@\@) {
     my $op = shift;
     use vars qw/@A @B/;
     local (*A, *B) = @_;    # syms for caller's input arrays
@@ -217,13 +207,11 @@ sub pairwise(&\@\@)
     }  0 .. $limit;
 }
 
-sub each_array (\@;\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@)
-{
+sub each_array (\@;\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@) {
     return each_arrayref(@_);
 }
 
-sub each_arrayref
-{
+sub each_arrayref {
     my @arr_list  = @_;     # The list of references to the arrays
     my $index     = 0;      # Which one the caller will get next
     my $max_num   = 0;      # Number of elements in longest array
@@ -264,8 +252,7 @@ sub each_arrayref
     }
 }
 
-sub natatime ($@)
-{
+sub natatime ($@) {
     my $n = shift;
     my @list = @_;
 
@@ -284,8 +271,7 @@ sub mesh (\@\@;\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@) {
 
 sub uniq (@) {
     my %h;
-    my $ref = \1;
-    map { $h{defined $_ ? $_ : $ref}++ == 0 ? $_ : () } @_;
+    map { $h{$_}++ == 0 ? $_ : () } @_;
 }
 
 sub minmax (@) {
@@ -323,48 +309,23 @@ sub part(&@) {
     return @parts;
 }
 
-sub bsearch(&@) {
-    my $code = shift;
-
-    my $rc;
-    my $i = 0;
-    my $j = @_;
-    do {
-        my $k = int(($i + $j) / 2);
-
-        return if $k >= @_;
-
-        local *_ = \$_[$k];
-        $rc = $code->();
-
-        $rc == 0 and
-            return wantarray ? $_ : 1;
-
-        if ($rc < 0) {
-            $i = $k + 1;
-        } else {
-            $j = $k - 1;
-        }
-    } until $i > $j;
-
-    return;
-}
-
 sub _XScompiled {
     return 0;
 }
 
 EOP
-die $@ if $@;
 
 *first_index = \&firstidx;
-*last_index = \&lastidx;
+*last_index  = \&lastidx;
 *first_value = \&firstval;
-*last_value = \&lastval;
-*zip = \&mesh;
+*last_value  = \&lastval;
+*zip         = \&mesh;
 
 1;
+
 __END__
+
+=pod
 
 =head1 NAME
 
@@ -372,11 +333,13 @@ List::MoreUtils - Provide the stuff missing in List::Util
 
 =head1 SYNOPSIS
 
-    use List::MoreUtils qw(any all none notall true false firstidx first_index 
-                           lastidx last_index insert_after insert_after_string 
-                           apply after after_incl before before_incl indexes 
-                           firstval first_value lastval last_value each_array
-                           each_arrayref pairwise natatime mesh zip uniq minmax);
+    use List::MoreUtils qw(
+        any all none notall true false firstidx first_index 
+        lastidx last_index insert_after insert_after_string 
+        apply after after_incl before before_incl indexes 
+        firstval first_value lastval last_value each_array
+        each_arrayref pairwise natatime mesh zip uniq minmax
+    );
 
 =head1 DESCRIPTION
 
@@ -696,15 +659,6 @@ Negative values are only ok when they refer to a partition previously created:
     my $i = 0;
     my @part = part { $idx[$++ % 3] } 1 .. 8;	# [1, 4, 7], [2, 3, 5, 6, 8]
 
-=item bsearch BLOCK LIST
-
-Performs a binary search on LIST which must be a sorted list of values. BLOCK
-must return a negative value if the current element (stored in C<$_>) is smaller,
-a positive value if it is bigger and zero if it matches.
-
-Returns a boolean value in scalar context. In list context, it returns the element
-if it was found, otherwise the empty list.
-
 =back
 
 =head1 EXPORTS
@@ -724,10 +678,6 @@ implementation and not the XS one. This environment variable is really just
 there for the test-suite to force testing the Perl implementation, and possibly
 for reporting of bugs. I don't see any reason to use it in a production
 environment.
-
-=head1 VERSION
-
-This is version 0.25_01.
 
 =head1 BUGS
 
@@ -827,11 +777,11 @@ L<List::Util>
 
 =head1 AUTHOR
 
-Tassilo von Parseval, E<lt>vparseval@gmail.comE<gt>
+Tassilo von Parseval E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004-2009 by Tassilo von Parseval
+Copyright 2004 - 2010 by Tassilo von Parseval
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,
