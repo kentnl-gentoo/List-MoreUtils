@@ -7,8 +7,10 @@ MANIFEST			This list of files
 MoreUtils.xs
 multicall.h
 README
-t/List-MoreUtils-pp.t
-t/List-MoreUtils.t
+t/01_compile.t
+t/02_perl.t
+t/03_xs.t
+t/lib/Test.pm
 xt/meta.t
 xt/pmv.t
 xt/pod.t

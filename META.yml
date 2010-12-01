@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               List-MoreUtils
-version:            0.26
+version:            0.27_01
 abstract:           Provide the stuff missing in List::Util
 author:
     - Tassilo von Parseval <tassilo.von.parseval@rwth-aachen.de>
@@ -10,7 +10,8 @@ configure_requires:
     ExtUtils::MakeMaker:  0
 build_requires:
     ExtUtils::MakeMaker:  0
-requires:  {}
+requires:
+    Test::More:  0.82
 no_index:
     directory:
         - t
