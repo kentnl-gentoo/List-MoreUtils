@@ -7,7 +7,7 @@ use DynaLoader ();
 
 use vars qw{$VERSION @ISA @EXPORT_OK %EXPORT_TAGS};
 BEGIN {
-    $VERSION     = '0.27_01';
+    $VERSION     = '0.27_02';
     @ISA         = qw{ Exporter DynaLoader };
     %EXPORT_TAGS = (
         all => [ qw{
@@ -19,7 +19,8 @@ BEGIN {
             firstval first_value lastval last_value
             each_array each_arrayref
             pairwise natatime
-            mesh zip uniq minmax part
+            mesh zip uniq distinct
+            minmax part
         } ],
     );
     @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -33,46 +34,50 @@ eval {
 
 eval <<'EOP' unless defined &any;
 
+# Use pure scalar boolean return values for compatibility with XS
+use constant YES => ! 0;
+use constant NO  => ! 1;
+
 sub any (&@) {
     my $f = shift;
-    return if ! @_;
-    for (@_) {
-        return 1 if $f->();
+    return undef unless @_;
+    foreach ( @_ ) {
+        return YES if $f->();
     }
-    return 0;
+    return NO;
 }
 
 sub all (&@) {
     my $f = shift;
-    return if ! @_;
-    for (@_) {
-        return 0 if ! $f->();
+    return undef unless @_;
+    foreach ( @_ ) {
+        return NO unless $f->();
     }
-    return 1;
+    return YES;
 }
 
 sub none (&@) {
     my $f = shift;
-    return if ! @_;
-    for (@_) {
-        return 0 if $f->();
+    return undef unless @_;
+    foreach ( @_ ) {
+        return NO if $f->();
     }
-    return 1;
+    return YES;
 }
 
 sub notall (&@) {
     my $f = shift;
-    return if ! @_;
-    for (@_) {
-        return 1 if ! $f->();
+    return undef unless @_;
+    foreach ( @_ ) {
+        return YES unless $f->();
     }
-    return 0;
+    return NO;
 }
 
 sub true (&@) {
     my $f = shift;
     my $count = 0;
-    for (@_) {
+    foreach ( @_ ) {
         $count++ if $f->();
     }
     return $count;
@@ -81,8 +86,8 @@ sub true (&@) {
 sub false (&@) {
     my $f = shift;
     my $count = 0;
-    for (@_) {
-        $count++ if ! $f->();
+    foreach ( @_ ) {
+        $count++ unless $f->();
     }
     return $count;
 }
@@ -98,7 +103,7 @@ sub firstidx (&@) {
 
 sub lastidx (&@) {
     my $f = shift;
-    for my $i (reverse 0 .. $#_) {
+    foreach my $i ( reverse 0 .. $#_ ) {
         local *_ = \$_[$i];
         return $i if $f->();
     }
@@ -138,7 +143,7 @@ sub after (&@) {
     my $test = shift;
     my $started;
     my $lag;
-    grep $started ||= do { my $x=$lag; $lag=$test->(); $x},  @_;
+    grep $started ||= do { my $x=$lag; $lag=$test->(); $x}, @_;
 }
 
 sub after_incl (&@) {
@@ -149,20 +154,27 @@ sub after_incl (&@) {
 
 sub before (&@) {
     my $test = shift;
-    my $keepgoing=1;
-    grep $keepgoing &&= !$test->(),  @_;
+    my $keepgoing = 1;
+    grep $keepgoing &&= !$test->(), @_;
 }
 
 sub before_incl (&@) {
     my $test = shift;
     my $keepgoing=1;
     my $lag=1;
-    grep $keepgoing &&= do { my $x=$lag; $lag=!$test->(); $x},  @_;
+    grep $keepgoing &&= do {
+        my $x = $lag;
+        $lag = ! $test->();
+        $x
+    }, @_;
 }
 
 sub indexes (&@) {
     my $test = shift;
-    grep {local *_=\$_[$_]; $test->()} 0..$#_;
+    grep {
+        local *_ = \$_[$_];
+        $test->()
+    } 0 .. $#_;
 }
 
 sub lastval (&@) {
@@ -180,8 +192,7 @@ sub lastval (&@) {
 
 sub firstval (&@) {
     my $test = shift;
-    foreach (@_)
-    {
+    foreach ( @_ ) {
         return $_ if $test->();
     }
     return undef;
@@ -260,16 +271,14 @@ sub natatime ($@) {
     my $n = shift;
     my @list = @_;
 
-    return sub
-    {
+    return sub {
         return splice @list, 0, $n;
     }
 }
 
 sub mesh (\@\@;\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@) {
     my $max = -1;
-    $max < $#$_  &&  ($max = $#$_)  for @_;
-
+    $max < $#$_ && ( $max = $#$_ ) for @_;
     map { my $ix = $_; map $_->[$ix], @_; } 0..$max; 
 }
 
@@ -325,6 +334,7 @@ die $@ if $@;
 *first_value = \&firstval;
 *last_value  = \&lastval;
 *zip         = \&mesh;
+*distinct    = \&uniq;
 
 1;
 
@@ -347,13 +357,13 @@ List::MoreUtils - Provide the stuff missing in List::Util
         firstval first_value lastval last_value
         each_array each_arrayref
         pairwise natatime
-        mesh zip uniq minmax part
+        mesh zip uniq distinct minmax part
     };
 
 =head1 DESCRIPTION
 
 B<List::MoreUtils> provides some trivial but commonly needed functionality on
-lists which is not going to go into C<List::Util>.
+lists which is not going to go into L<List::Util>.
 
 All of the below functions are implementable in only a couple of lines of Perl
 code. Using the functions from this module however should give slightly better
@@ -369,7 +379,7 @@ Returns a true value if any item in LIST meets the criterion given through
 BLOCK. Sets C<$_> for each item in LIST in turn:
 
     print "At least one value undefined"
-        if any { !defined($_) } @list;
+        if any { ! defined($_) } @list;
 
 Returns false otherwise, or C<undef> if LIST is empty.
 
@@ -385,8 +395,8 @@ Returns false otherwise, or C<undef> if LIST is empty.
 
 =item none BLOCK LIST
 
-Logically the negation of C<any>. Returns a true value if no item in LIST meets the
-criterion given through BLOCK. Sets C<$_> for each item in LIST in turn:
+Logically the negation of C<any>. Returns a true value if no item in LIST meets
+the criterion given through BLOCK. Sets C<$_> for each item in LIST in turn:
 
     print "No value defined"
         if none { defined($_) } @list;
@@ -395,8 +405,9 @@ Returns false otherwise, or C<undef> if LIST is empty.
 
 =item notall BLOCK LIST
 
-Logically the negation of C<all>. Returns a true value if not all items in LIST meet
-the criterion given through BLOCK. Sets C<$_> for each item in LIST in turn:
+Logically the negation of C<all>. Returns a true value if not all items in LIST
+meet the criterion given through BLOCK. Sets C<$_> for each item in LIST in
+turn:
 
     print "Not all values defined"
         if notall { defined($_) } @list;
@@ -405,15 +416,15 @@ Returns false otherwise, or C<undef> if LIST is empty.
 
 =item true BLOCK LIST
 
-Counts the number of elements in LIST for which the criterion in BLOCK is true. Sets C<$_> for 
-each item in LIST in turn:
+Counts the number of elements in LIST for which the criterion in BLOCK is true.
+Sets C<$_> for  each item in LIST in turn:
 
     printf "%i item(s) are defined", true { defined($_) } @list;
 
 =item false BLOCK LIST
 
-Counts the number of elements in LIST for which the criterion in BLOCK is false. Sets C<$_> for
-each item in LIST in turn:
+Counts the number of elements in LIST for which the criterion in BLOCK is false.
+Sets C<$_> for each item in LIST in turn:
 
     printf "%i item(s) are not defined", false { defined($_) } @list;
 
@@ -421,8 +432,8 @@ each item in LIST in turn:
 
 =item first_index BLOCK LIST
 
-Returns the index of the first element in LIST for which the criterion in BLOCK is true. Sets C<$_>
-for each item in LIST in turn:
+Returns the index of the first element in LIST for which the criterion in BLOCK
+is true. Sets C<$_> for each item in LIST in turn:
 
     my @list = (1, 4, 3, 2, 4, 6);
     printf "item with index %i in list is 4", firstidx { $_ == 4 } @list;
@@ -437,8 +448,8 @@ C<first_index> is an alias for C<firstidx>.
 
 =item last_index BLOCK LIST
 
-Returns the index of the last element in LIST for which the criterion in BLOCK is true. Sets C<$_>
-for each item in LIST in turn:
+Returns the index of the last element in LIST for which the criterion in BLOCK
+is true. Sets C<$_> for each item in LIST in turn:
 
     my @list = (1, 4, 3, 2, 4, 6);
     printf "item with index %i in list is 4", lastidx { $_ == 4 } @list;
@@ -451,8 +462,8 @@ C<last_index> is an alias for C<lastidx>.
 
 =item insert_after BLOCK VALUE LIST
 
-Inserts VALUE after the first item in LIST for which the criterion in BLOCK is true. Sets C<$_> for
-each item in LIST in turn.
+Inserts VALUE after the first item in LIST for which the criterion in BLOCK is
+true. Sets C<$_> for each item in LIST in turn.
 
     my @list = qw/This is a list/;
     insert_after { $_ eq "a" } "longer" => @list;
@@ -489,6 +500,15 @@ Think of it as syntactic sugar for
 
     for (my @mult = @list) { $_ *= 2 }
 
+=item before BLOCK LIST
+
+Returns a list of values of LIST upto (and not including) the point where BLOCK
+returns a true value. Sets C<$_> for each element in LIST in turn.
+
+=item before_incl BLOCK LIST
+
+Same as C<before> but also includes the element for which BLOCK is true.
+
 =item after BLOCK LIST
 
 Returns a list of the values of LIST after (and not including) the point
@@ -499,15 +519,6 @@ where BLOCK returns a true value. Sets C<$_> for each element in LIST in turn.
 =item after_incl BLOCK LIST
 
 Same as C<after> but also inclues the element for which BLOCK is true.
-
-=item before BLOCK LIST
-
-Returns a list of values of LIST upto (and not including) the point where BLOCK
-returns a true value. Sets C<$_> for each element in LIST in turn.
-
-=item before_incl BLOCK LIST
-
-Same as C<before> but also includes the element for which BLOCK is true.
 
 =item indexes BLOCK LIST
 
@@ -618,6 +629,8 @@ C<zip> is an alias for C<mesh>.
 
 =item uniq LIST
 
+=item distinct LIST
+
 Returns a new list by stripping duplicate values in LIST. The order of
 elements in the returned list is the same as in LIST. In scalar context,
 returns the number of unique elements in LIST.
@@ -628,22 +641,23 @@ returns the number of unique elements in LIST.
 =item minmax LIST
 
 Calculates the minimum and maximum of LIST and returns a two element list with
-the first element being the minimum and the second the maximum. Returns the empty
-list if LIST was empty.
+the first element being the minimum and the second the maximum. Returns the
+empty list if LIST was empty.
 
-The minmax algorithm differs from a naive iteration over the list where each element
-is compared to two values being the so far calculated min and max value in that it
-only requires 3n/2 - 2 comparisons. Thus it is the most efficient possible algorithm.
+The C<minmax> algorithm differs from a naive iteration over the list where each
+element is compared to two values being the so far calculated min and max value
+in that it only requires 3n/2 - 2 comparisons. Thus it is the most efficient
+possible algorithm.
 
 However, the Perl implementation of it has some overhead simply due to the fact
 that there are more lines of Perl code involved. Therefore, LIST needs to be
-fairly big in order for minmax to win over a naive implementation. This
+fairly big in order for C<minmax> to win over a naive implementation. This
 limitation does not apply to the XS version.
 
 =item part BLOCK LIST
 
-Partitions LIST based on the return value of BLOCK which denotes into which partition
-the current value is put.
+Partitions LIST based on the return value of BLOCK which denotes into which
+partition the current value is put.
 
 Returns a list of the partitions thusly created. Each partition created is a
 reference to an array.
@@ -664,9 +678,9 @@ Be careful with negative values, though:
 
 Negative values are only ok when they refer to a partition previously created:
 
-    my @idx = (0, 1, -1);
-    my $i = 0;
-    my @part = part { $idx[$++ % 3] } 1 .. 8;	# [1, 4, 7], [2, 3, 5, 6, 8]
+    my @idx  = ( 0, 1, -1 );
+    my $i    = 0;
+    my @part = part { $idx[$++ % 3] } 1 .. 8; # [1, 4, 7], [2, 3, 5, 6, 8]
 
 =back
 
@@ -674,11 +688,12 @@ Negative values are only ok when they refer to a partition previously created:
 
 Nothing by default. To import all of this module's symbols, do the conventional
 
-    use List::MoreUtils qw/:all/;
+    use List::MoreUtils ':all';
 
-It may make more sense though to only import the stuff your program actually needs:
+It may make more sense though to only import the stuff your program actually
+needs:
 
-    use List::MoreUtils qw/any firstidx/;
+    use List::MoreUtils qw{ any firstidx };
 
 =head1 ENVIRONMENT
 
@@ -693,7 +708,7 @@ environment.
 There is a problem with a bug in 5.6.x perls. It is a syntax error to write
 things like:
 
-    my @x = apply { s/foo/bar/ } qw/foo bar baz/;
+    my @x = apply { s/foo/bar/ } qw{ foo bar baz };
 
 It has to be written as either
 
@@ -703,22 +718,28 @@ or
 
     my @x = apply { s/foo/bar/ } my @dummy = qw/foo bar baz/;
 
-Perl5.5.x and perl5.8.x don't suffer from this limitation.
+Perl 5.5.x and Perl 5.8.x don't suffer from this limitation.
 
 If you have a functionality that you could imagine being in this module, please
-drop me a line. This module's policy will be less strict than C<List::Util>'s when
-it comes to additions as it isn't a core module.
+drop me a line. This module's policy will be less strict than L<List::Util>'s
+when it comes to additions as it isn't a core module.
 
 When you report bugs, it would be nice if you could additionally give me the
 output of your program with the environment variable C<LIST_MOREUTILS_PP> set
 to a true value. That way I know where to look for the problem (in XS,
 pure-Perl or possibly both).
 
+=head1 SUPPORT
+
+Bugs should always be submitted via the CPAN bug tracker.
+
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=List-MoreUtils>
+
 =head1 THANKS
 
 Credits go to a number of people: Steve Purkis for giving me namespace advice
 and James Keenan and Terrence Branno for their effort of keeping the CPAN
-tidier by making List::Utils obsolete. 
+tidier by making L<List::Utils> obsolete. 
 
 Brian McCauley suggested the inclusion of apply() and provided the pure-Perl
 implementation for it.
@@ -747,10 +768,15 @@ XS-implementation of part() work.
 
 =head1 TODO
 
-A pile of requests from other people is still pending further processing in my
-mailbox. This includes:
+A pile of requests from other people is still pending further processing in
+my mailbox. This includes:
 
 =over 4
+
+=item * List::Util export pass-through
+
+Allow B<List::MoreUtils> to pass-through the regular L<List::Util>
+functions to end users only need to C<use> the one module.
 
 =item * uniq_by(&@)
 
@@ -775,8 +801,8 @@ These were all suggested by Dan Muey.
 
 =item * listify
 
-Always return a flat list when either a simple scalar value was passed or an array-reference.
-Suggested by Mark Summersault.
+Always return a flat list when either a simple scalar value was passed or an
+array-reference. Suggested by Mark Summersault.
 
 =back
 
