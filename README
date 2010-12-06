@@ -31,7 +31,7 @@ DESCRIPTION
             print "At least one value undefined"
                 if any { ! defined($_) } @list;
 
-        Returns false otherwise, or "undef" if LIST is empty.
+        Returns false otherwise, or if LIST is empty.
 
     all BLOCK LIST
         Returns a true value if all items in LIST meet the criterion given
@@ -40,7 +40,7 @@ DESCRIPTION
             print "All items defined"
                 if all { defined($_) } @list;
 
-        Returns false otherwise, or "undef" if LIST is empty.
+        Returns false otherwise, or if LIST is empty.
 
     none BLOCK LIST
         Logically the negation of "any". Returns a true value if no item in
@@ -50,7 +50,7 @@ DESCRIPTION
             print "No value defined"
                 if none { defined($_) } @list;
 
-        Returns false otherwise, or "undef" if LIST is empty.
+        Returns false otherwise, or if LIST is empty.
 
     notall BLOCK LIST
         Logically the negation of "all". Returns a true value if not all
@@ -60,7 +60,7 @@ DESCRIPTION
             print "Not all values defined"
                 if notall { defined($_) } @list;
 
-        Returns false otherwise, or "undef" if LIST is empty.
+        Returns false otherwise, or if LIST is empty.
 
     true BLOCK LIST
         Counts the number of elements in LIST for which the criterion in
