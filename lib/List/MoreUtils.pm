@@ -7,7 +7,7 @@ use DynaLoader ();
 
 use vars qw{ $VERSION @ISA @EXPORT_OK %EXPORT_TAGS };
 BEGIN {
-    $VERSION   = '0.27_04';
+    $VERSION   = '0.28';
     @ISA       = qw{ Exporter DynaLoader };
     @EXPORT_OK = qw{
         any all none notall true false
@@ -307,8 +307,8 @@ sub mesh (\@\@;\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@\@) {
 }
 
 sub uniq (@) {
-    my %h = ();
-    map { $h{$_}++ == 0 ? $_ : () } @_;
+    my %seen = ();
+    grep { not $seen{$_}++ } @_;
 }
 
 sub minmax (@) {

@@ -7,7 +7,7 @@ use List::MoreUtils ':all';
 
 # Run all tests
 sub run {
-    plan tests => 152;
+    plan tests => 154;
 
     test_any();
     test_all();
@@ -185,6 +185,18 @@ sub test_apply {
     ok( arrayeq( \@list1, [ "foo", "bar", "", "foobar" ] ) );
     my $item = apply { s/^\s+|\s+$//g } @list;
     is( $item, "foobar" );
+
+    # RT 38630
+    SCOPE: {
+        # wrong results from apply() [XS]
+        @list = ( 1 .. 4 );
+        @list1 = apply {
+            grow_stack();
+            $_ = 5;
+        } @list;
+        ok( arrayeq( \@list, [ 1 .. 4 ] ) );
+        ok( arrayeq( \@list1, [ ( 5 ) x 4 ] ) );
+    }
 }
 
 sub test_indexes {
@@ -451,9 +463,10 @@ sub test_zip {
     }
 
     SCOPE: {
+        # Make array with holes
         my @a = ( 1 .. 10 );
         my @d;
-        $#d = 9; # make array with holes
+        $#d = 9; 
         my @z = zip @a, @d;
         ok(
             arrayeq( \@z, [
@@ -480,10 +493,11 @@ sub test_mesh {
         ok( arrayeq( \@z, [ 'x', 1, 'zip', undef, 2, 'zap', undef, undef, 'zot' ] ) );
     }
 
+    # Make array with holes
     SCOPE: {
         my @a = ( 1 .. 10 );
         my @d;
-        $#d = 9; # make array with holes
+        $#d = 9;
         my @z = mesh @a, @d;
         ok(
             arrayeq( \@z, [
@@ -511,6 +525,17 @@ sub test_uniq {
         my $u = distinct @a;
         is( 1000, $u );
     }
+
+    # Test support for undef values without warnings
+    # SCOPE: {
+        # my @warnings  = ();
+        # local $SIG{__WARN__} = sub {
+            # push @warnings, @_;
+        # };
+        # my @foo = ('a','b', undef, 'b', '');
+        # is_deeply( [ uniq @foo ], \@foo, 'undef is supported correctly' );
+        # is_deeply( \@warnings, [ ], 'No warnings during uniq check' );
+    # }
 }
 
 sub test_part {
@@ -604,6 +629,14 @@ sub is_true {
 sub is_false {
     die "Expected 1 param" unless @_ == 1;
     is( $_[0], !1 );
+}
+
+my @bigary = ( 1 ) x 500;
+
+sub func { }
+
+sub grow_stack {
+    func(@bigary);
 }
 
 sub arrayeq {
