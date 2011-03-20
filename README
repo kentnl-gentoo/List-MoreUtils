@@ -35,22 +35,23 @@ DESCRIPTION
 
     all BLOCK LIST
         Returns a true value if all items in LIST meet the criterion given
-        through BLOCK. Sets $_ for each item in LIST in turn:
+        through BLOCK, or if LIST is empty. Sets $_ for each item in LIST in
+        turn:
 
             print "All items defined"
                 if all { defined($_) } @list;
 
-        Returns false otherwise, or if LIST is empty.
+        Returns false otherwise.
 
     none BLOCK LIST
         Logically the negation of "any". Returns a true value if no item in
-        LIST meets the criterion given through BLOCK. Sets $_ for each item
-        in LIST in turn:
+        LIST meets the criterion given through BLOCK, or if LIST is empty.
+        Sets $_ for each item in LIST in turn:
 
             print "No value defined"
                 if none { defined($_) } @list;
 
-        Returns false otherwise, or if LIST is empty.
+        Returns false otherwise.
 
     notall BLOCK LIST
         Logically the negation of "all". Returns a true value if not all
@@ -428,9 +429,13 @@ SEE ALSO
     List::Util
 
 AUTHOR
+    Adam Kennedy <adamk@cpan.org>
+
     Tassilo von Parseval <tassilo.von.parseval@rwth-aachen.de>
 
 COPYRIGHT AND LICENSE
+    Some parts copyright 2011 Aaron Crane.
+
     Copyright 2004 - 2010 by Tassilo von Parseval
 
     This library is free software; you can redistribute it and/or modify it

@@ -7,7 +7,8 @@ use DynaLoader ();
 
 use vars qw{ $VERSION @ISA @EXPORT_OK %EXPORT_TAGS };
 BEGIN {
-    $VERSION   = '0.30';
+    $VERSION   = '0.31_01';
+    $VERSION   = eval $VERSION;
     @ISA       = qw{ Exporter DynaLoader };
     @EXPORT_OK = qw{
         any all none notall true false
@@ -38,31 +39,6 @@ BEGIN {
     } unless $ENV{LIST_MOREUTILS_PP};
 }
 
-# Always use Perl apply() until memory leaks are resolved.
-sub apply (&@) {
-    my $action = shift;
-    &$action foreach my @values = @_;
-    wantarray ? @values : $values[-1];
-}
-
-# Always use Perl part() until memory leaks are resolved.
-sub part (&@) {
-    my ($code, @list) = @_;
-    my @parts;
-    push @{ $parts[ $code->($_) ] }, $_  foreach @list;
-    return @parts;
-}
-
-# Always use Perl indexes() until memory leaks are resolved.
-sub indexes (&@) {
-    my $test = shift;
-    grep {
-        local *_ = \$_[$_];
-        $test->()
-    } 0 .. $#_;
-}
-
-# Load the pure-Perl versions of the other functions if needed
 eval <<'END_PERL' unless defined &any;
 
 # Use pure scalar boolean return values for compatibility with XS
@@ -168,6 +144,12 @@ sub insert_after_string ($$\@) {
     return 0;
 }
 
+sub apply (&@) {
+    my $action = shift;
+    &$action foreach my @values = @_;
+    wantarray ? @values : $values[-1];
+}
+
 sub after (&@) {
     my $test = shift;
     my $started;
@@ -200,6 +182,14 @@ sub before_incl (&@) {
         $lag = ! $test->();
         $x
     }, @_;
+}
+
+sub indexes (&@) {
+    my $test = shift;
+    grep {
+        local *_ = \$_[$_];
+        $test->()
+    } 0 .. $#_;
 }
 
 sub lastval (&@) {
@@ -343,6 +333,13 @@ sub minmax (@) {
     return ($min, $max);
 }
 
+sub part (&@) {
+    my ($code, @list) = @_;
+    my @parts;
+    push @{ $parts[ $code->($_) ] }, $_  foreach @list;
+    return @parts;
+}
+
 sub _XScompiled {
     return 0;
 }
@@ -408,22 +405,23 @@ Returns false otherwise, or if LIST is empty.
 =item all BLOCK LIST
 
 Returns a true value if all items in LIST meet the criterion given through
-BLOCK. Sets C<$_> for each item in LIST in turn:
+BLOCK, or if LIST is empty. Sets C<$_> for each item in LIST in turn:
 
     print "All items defined"
         if all { defined($_) } @list;
 
-Returns false otherwise, or if LIST is empty.
+Returns false otherwise.
 
 =item none BLOCK LIST
 
 Logically the negation of C<any>. Returns a true value if no item in LIST meets
-the criterion given through BLOCK. Sets C<$_> for each item in LIST in turn:
+the criterion given through BLOCK, or if LIST is empty. Sets C<$_> for each item
+in LIST in turn:
 
     print "No value defined"
         if none { defined($_) } @list;
 
-Returns false otherwise, or if LIST is empty.
+Returns false otherwise.
 
 =item notall BLOCK LIST
 
@@ -834,9 +832,13 @@ L<List::Util>
 
 =head1 AUTHOR
 
+Adam Kennedy E<lt>adamk@cpan.orgE<gt>
+
 Tassilo von Parseval E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
 
 =head1 COPYRIGHT AND LICENSE
+
+Some parts copyright 2011 Aaron Crane.
 
 Copyright 2004 - 2010 by Tassilo von Parseval
 

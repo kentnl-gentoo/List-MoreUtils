@@ -573,7 +573,6 @@ insert_after_string (string, val, avref)
     OUTPUT:
 	RETVAL
 
-#if 0
 void
 apply (code, ...)
     SV *code;
@@ -603,11 +602,12 @@ CODE:
     }
     POP_MULTICALL;
 
+    for(i = 1 ; i < items ; ++i)
+        sv_2mortal(args[i-1]);
+
     done:
     XSRETURN(items-1);
 }
-
-#endif
 
 void
 after (code, ...)
@@ -754,7 +754,6 @@ CODE:
     XSRETURN(i-1);
 }
 
-#if 0
 void
 indexes (code, ...)
     SV *code;
@@ -779,22 +778,20 @@ CODE:
     for (i = 1, j = 0; i < items; i++) {
 	GvSV(PL_defgv) = args[i];
 	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    args[j] = sv_2mortal(newSViv(i-1));
-	    /* need to artificially increase ref-count here
-	     * because POPBLOCK further below would otherwise
-	     * free the items in SP */
-	    SvREFCNT_inc(args[j]);
-	    j++;
-	}
+	if (SvTRUE(*PL_stack_sp))
+            /* POP_MULTICALL can free mortal temporaries, so we defer
+             * mortalising the returned values till after that's been
+             * done */
+	    args[j++] = newSViv(i-1);
     }
     
     POP_MULTICALL;
-    
+
+    for (i = 0; i < j; i++)
+        sv_2mortal(args[i]);
+
     XSRETURN(j);
 }
-
-#endif
 
 SV *
 lastval (code, ...)
@@ -895,7 +892,6 @@ _array_iterator (method = "")
 	    AV *av = args->avs[i];
 	    if (args->curidx <= av_len(av)) {
 		ST(i) = sv_2mortal(newSVsv(*av_fetch(av, args->curidx, FALSE)));
-		SvREFCNT_inc(ST(i));
 		exhausted = 0;
 		continue;
 	    }
@@ -1055,7 +1051,6 @@ pairwise (code, ...)
 	    for (j = nret-1; j >= 0; j--) {
 		/* POPs would return elements in reverse order */
 		buf[d] = sp[-j];
-		SvREFCNT_inc(buf[d]);
 		d++;
 	    }
 	    sp -= nret;
@@ -1089,9 +1084,8 @@ _natatime_iterator ()
 	EXTEND(SP, nret);
 
 	for (i = 0; i < args->natatime; i++) {
-	    if (args->nsvs) {
+	    if (args->curidx < args->nsvs) {
 		ST(i) = sv_2mortal(newSVsv(args->svs[args->curidx++]));
-		args->nsvs--;
 	    }
 	    else {
 		XSRETURN(i);
@@ -1168,7 +1162,8 @@ uniq (...)
     {
 	register int i, count = 0;
 	HV *hv = newHV();
-	
+	sv_2mortal(newRV_noinc((SV*)hv));
+
 	/* don't build return list in scalar context */
 	if (GIMME == G_SCALAR) {
 	    for (i = 0; i < items; i++) {
@@ -1177,7 +1172,6 @@ uniq (...)
 		    hv_store_ent(hv, ST(i), &PL_sv_yes, 0);
 		}
 	    }
-	    SvREFCNT_dec(hv);
 	    ST(0) = sv_2mortal(newSViv(count));
 	    XSRETURN(1);
 	}
@@ -1190,7 +1184,6 @@ uniq (...)
 		hv_store_ent(hv, ST(i), &PL_sv_yes, 0);
 	    }
 	}
-	SvREFCNT_dec(hv);
 	XSRETURN(count);
     }
 
@@ -1272,7 +1265,6 @@ minmax (...)
 	XSRETURN(2);
     }
 
-#if 0
 void
 part (code, ...)
     SV *code;
@@ -1322,18 +1314,15 @@ CODE:
 
     EXTEND(SP, last);
     for (i = 0; i < last; ++i) {
-	if (!tmp[i]) {
-	    ST(i) = &PL_sv_undef;
-	    continue;
-	}
-	ST(i) = newRV_noinc((SV*)tmp[i]);
+        if (tmp[i])
+            ST(i) = sv_2mortal(newRV_noinc((SV*)tmp[i]));
+        else
+            ST(i) = &PL_sv_undef;
     }
     
     Safefree(tmp);
     XSRETURN(last);
 }
-
-#endif
 
 #if 0
 void
