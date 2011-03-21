@@ -7,6 +7,7 @@ MANIFEST			This list of files
 MoreUtils.xs
 multicall.h
 README
+sanexs.c
 t/01_compile.t
 t/02_perl.t
 t/03_xs.t
