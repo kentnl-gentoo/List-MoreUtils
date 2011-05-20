@@ -221,7 +221,7 @@ DESCRIPTION
         Like each_array, but the arguments are references to arrays, not the
         plain arrays.
 
-    natatime BLOCK LIST
+    natatime EXPR, LIST
         Creates an array iterator, for looping over an array in chunks of $n
         items at a time. (n at a time, get it?). An example is probably a
         better explanation than I could give in words.
