@@ -1,18 +1,16 @@
 Changes
 dhash.h
+inc/Config/AutoConf/LMU.pm
 lib/List/MoreUtils.pm
-LICENSE
 Makefile.PL
 MANIFEST			This list of files
+MANIFEST.SKIP
+META.yml
 MoreUtils.xs
 multicall.h
 README
-sanexs.c
 t/01_compile.t
 t/02_perl.t
 t/03_xs.t
 t/lib/Test.pm
-xt/meta.t
-xt/pmv.t
-xt/pod.t
-META.yml                                 Module meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

@@ -1,13 +1,13 @@
 package List::MoreUtils;
 
-use 5.00503;
+use 5.008003;
 use strict;
 use Exporter   ();
 use DynaLoader ();
 
 use vars qw{ $VERSION @ISA @EXPORT_OK %EXPORT_TAGS };
 BEGIN {
-    $VERSION   = '0.33';
+    $VERSION   = '0.400';
     # $VERSION   = eval $VERSION;
     @ISA       = qw{ Exporter DynaLoader };
     @EXPORT_OK = qw{
@@ -21,6 +21,8 @@ BEGIN {
         pairwise natatime
         mesh zip uniq distinct
         minmax part
+        sort_by nsort_by
+        bsearch
     };
     %EXPORT_TAGS = (
         all => \@EXPORT_OK,
@@ -340,6 +342,34 @@ sub part (&@) {
     return @parts;
 }
 
+sub bsearch(&@) {
+    my $code = shift;
+
+    my $rc;
+    my $i = 0;
+    my $j = @_;
+    do {
+        my $k = int(($i + $j) / 2);
+
+        $k >= @_ and return;
+
+        local *_ = \$_[$k];
+        $rc = $code->();
+
+        $rc == 0 and
+            return wantarray ? $_ : 1;
+
+        if ($rc < 0) {
+            $i = $k + 1;
+        }
+	else {
+            $j = $k - 1;
+        }
+    } until $i > $j;
+
+    return;
+}
+
 sub _XScompiled {
     return 0;
 }
@@ -354,6 +384,22 @@ die $@ if $@;
 *last_value  = \&lastval;
 *zip         = \&mesh;
 *distinct    = \&uniq;
+
+sub sort_by(&@) {
+    my ($code, @list) = @_;
+    return map { $_->[0] }
+          sort { $a->[1] cmp $b->[1] }
+           map { [$_, scalar($code->())] }
+               @list;
+}
+
+sub nsort_by(&@) {
+    my ($code, @list) = @_;
+    return map { $_->[0] }
+          sort { $a->[1] <=> $b->[1] }
+           map { [$_, scalar($code->())] }
+               @list;
+}
 
 1;
 
@@ -402,6 +448,8 @@ BLOCK. Sets C<$_> for each item in LIST in turn:
 
 Returns false otherwise, or if LIST is empty.
 
+B<The behaviour without LIST needs to be discussed!>
+
 =item all BLOCK LIST
 
 Returns a true value if all items in LIST meet the criterion given through
@@ -411,6 +459,8 @@ BLOCK, or if LIST is empty. Sets C<$_> for each item in LIST in turn:
         if all { defined($_) } @list;
 
 Returns false otherwise.
+
+B<The behaviour without LIST needs to be discussed!>
 
 =item none BLOCK LIST
 
@@ -433,6 +483,8 @@ turn:
         if notall { defined($_) } @list;
 
 Returns false otherwise, or if LIST is empty.
+
+B<The behaviour without LIST needs to be discussed!>
 
 =item true BLOCK LIST
 
@@ -702,6 +754,44 @@ Negative values are only ok when they refer to a partition previously created:
     my $i    = 0;
     my @part = part { $idx[$++ % 3] } 1 .. 8; # [1, 4, 7], [2, 3, 5, 6, 8]
 
+=item bsearch BLOCK LIST
+
+Performs a binary search on LIST which must be a sorted list of values. BLOCK
+must return a negative value if the current element (stored in C<$_>) is smaller,
+a positive value if it is bigger and zero if it matches.
+
+Returns a boolean value in scalar context. In list context, it returns the element
+if it was found, otherwise the empty list.
+
+=item sort_by BLOCK LIST
+
+Returns the list of values sorted according to the string values returned by the
+KEYFUNC block or function. A typical use of this may be to sort objects according
+to the string value of some accessor, such as
+
+    sort_by { $_->name } @people
+
+The key function is called in scalar context, being passed each value in turn as
+both $_ and the only argument in the parameters, @_. The values are then sorted
+according to string comparisons on the values returned.
+This is equivalent to
+
+    sort { $a->name cmp $b->name } @people
+
+except that it guarantees the name accessor will be executed only once per value.
+One interesting use-case is to sort strings which may have numbers embedded in them
+"naturally", rather than lexically.
+
+    sort_by { s/(\d+)/sprintf "%09d", $1/eg; $_ } @strings
+
+This sorts strings by generating sort keys which zero-pad the embedded numbers to
+some level (9 digits in this case), helping to ensure the lexical sort puts them
+in the correct order.
+
+=item nsort_by BLOCK LIST
+
+Similar to sort_by but compares its key values numerically.
+
 =back
 
 =head1 EXPORTS
@@ -753,7 +843,68 @@ pure-Perl or possibly both).
 
 Bugs should always be submitted via the CPAN bug tracker.
 
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=List-MoreUtils>
+You can find documentation for this module with the perldoc command.
+
+    perldoc List::MoreUtils
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=List-MoreUtils>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/List-MoreUtils>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/l/List-MoreUtils>
+
+=item * CPAN Search
+
+L<http://search.cpan.org/dist/List-MoreUtils/>
+
+=item * Got Repository
+
+L<https://github.com/perl5-utils/List-MoreUtils>
+
+=back
+
+=head2 Where can I go for help?
+
+If you have a bug report, a patch or a suggestion, please open a new
+report ticket at CPAN (but please check previous reports first in case
+your issue has already been addressed).
+
+Report tickets should contain a detailed description of the bug or
+enhancement request and at least an easily verifiable way of
+reproducing the issue or fix. Patches are always welcome, too - and
+it's cheap to send pull-requests on GitHub. Please keep in mind that
+code changes are more likely accepted when they're bundled with an
+approving test.
+
+If you think you've found a bug then please read
+"How to Report Bugs Effectively" by Simon Tatham:
+L<http://www.chiark.greenend.org.uk/~sgtatham/bugs.html>.
+
+=head2 Where can I go for help with a concrete version?
+
+Bugs and feature requests are accepted against the latest version
+only. To get patches for earlier versions, you need to get an
+agreement with a developer of your choice - who may or not report the
+issue and a suggested fix upstream (depends on the license you have
+chosen).
+
+=head2 Business support and maintenance
+
+For business support you can contact Jens via his CPAN email
+address rehsackATcpan.org. Please keep in mind that business
+support is neither available for free nor are you eligible to
+receive any support based on the license distributed with this
+package.
 
 =head1 THANKS
 
@@ -832,6 +983,8 @@ L<List::Util>
 
 =head1 AUTHOR
 
+Jens Rehsack E<lt>rehsack AT cpan.orgE<gt>
+
 Adam Kennedy E<lt>adamk@cpan.orgE<gt>
 
 Tassilo von Parseval E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
@@ -841,6 +994,7 @@ Tassilo von Parseval E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
 Some parts copyright 2011 Aaron Crane.
 
 Copyright 2004 - 2010 by Tassilo von Parseval
+Copyright 2013 by Jens Rehsack
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,
