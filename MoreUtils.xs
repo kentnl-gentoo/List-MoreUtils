@@ -1,7 +1,7 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
-
+#include "ppport.h"
 
 #ifndef PERL_VERSION
 #    include <patchlevel.h>
@@ -86,6 +86,95 @@ my_cxinc(pTHX)
 #  define slu_sv_value(sv) (SvIOK(sv)) ? (NV)(SvIVX(sv)) : (SvNV(sv))
 #endif
 
+/*
+ * Perl < 5.18 had some kind of different SvIV_please_nomg
+ */
+#if PERL_VERSION < 18
+#undef SvIV_please_nomg
+#  define SvIV_please_nomg(sv) \
+	(!SvIOKp(sv) && (SvNOK(sv) || SvPOK(sv)) \
+	    ? (SvIV_nomg(sv), SvIOK(sv))	  \
+	    : SvIOK(sv))
+#endif
+
+/* compare left and right SVs. Returns:
+ * -1: <
+ *  0: ==
+ *  1: >
+ *  2: left or right was a NaN
+ */
+static I32
+ncmp(pTHX_ SV* left, SV * right)
+{
+    /* Fortunately it seems NaN isn't IOK */
+    if(SvAMAGIC(left) || SvAMAGIC(right))
+	return SvIVX(amagic_call(left, right, ncmp_amg, 0));
+
+    if (SvIV_please_nomg(right) && SvIV_please_nomg(left)) {
+	if (!SvUOK(left)) {
+	    const IV leftiv = SvIVX(left);
+	    if (!SvUOK(right)) {
+		/* ## IV <=> IV ## */
+		const IV rightiv = SvIVX(right);
+		return (leftiv > rightiv) - (leftiv < rightiv);
+	    }
+	    /* ## IV <=> UV ## */
+	    if (leftiv < 0)
+		/* As (b) is a UV, it's >=0, so it must be < */
+		return -1;
+	    {
+		const UV rightuv = SvUVX(right);
+		return ((UV)leftiv > rightuv) - ((UV)leftiv < rightuv);
+	    }
+	}
+
+	if (SvUOK(right)) {
+	    /* ## UV <=> UV ## */
+	    const UV leftuv = SvUVX(left);
+	    const UV rightuv = SvUVX(right);
+	    return (leftuv > rightuv) - (leftuv < rightuv);
+	}
+	/* ## UV <=> IV ## */
+	{
+	    const IV rightiv = SvIVX(right);
+	    if (rightiv < 0)
+		/* As (a) is a UV, it's >=0, so it cannot be < */
+		return 1;
+	    {
+		const UV leftuv = SvUVX(left);
+		return (leftuv > (UV)rightiv) - (leftuv < (UV)rightiv);
+	    }
+	}
+	assert(0); /* NOTREACHED */
+    }
+    else
+    {
+#ifdef SvNV_nomg
+        NV const rnv = SvNV_nomg(right);
+        NV const lnv = SvNV_nomg(left);
+#else
+        NV const rnv = slu_sv_value(right);
+        NV const lnv = slu_sv_value(left);
+#endif
+
+#if defined(NAN_COMPARE_BROKEN) && defined(Perl_isnan)
+        if (Perl_isnan(lnv) || Perl_isnan(rnv)) {
+	    return 2;
+        }
+        return (lnv > rnv) - (lnv < rnv);
+#else
+        if (lnv < rnv)
+	    return -1;
+        if (lnv > rnv)
+	    return 1;
+        if (lnv == rnv)
+            return 0;
+        return 2;
+#endif
+    }
+}
+
+
 #ifndef Drand01
 #    define Drand01()           ((rand() & 0x7FFF) / (double) ((unsigned long)1 << 15))
 #endif
@@ -157,7 +246,7 @@ sv_tainted(SV *sv)
 	register int i;									\
 	arrayeach_args * args;								\
 	HV *stash = gv_stashpv("List::MoreUtils_ea", TRUE);				\
-	CV *closure = newXS(NULL, XS_List__MoreUtils__array_iterator, __FILE__);	\
+	CV *closure = newXS(NULL, XS_List__MoreUtils__Impl__Tassilo__array_iterator, __FILE__);	\
 											\
 	/* prototype */									\
 	sv_setpv((SV*)closure, ";$");							\
@@ -198,7 +287,7 @@ typedef struct {
 
 void
 insert_after (int idx, SV *what, AV *av) {
-    register int i, len;
+    int i, len;
     av_extend(av, (len = av_len(av) + 1));
     
     for (i = len; i > idx+1; i--) {
@@ -211,7 +300,7 @@ insert_after (int idx, SV *what, AV *av) {
 
 }
 
-MODULE = List::MoreUtils		PACKAGE = List::MoreUtils
+MODULE = List::MoreUtils::Impl::Tassilo		PACKAGE = List::MoreUtils::Impl::Tassilo
 
 void
 any (code,...)
@@ -228,7 +317,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_NO;
+	XSRETURN_UNDEF;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -261,7 +350,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_YES;
+	XSRETURN_UNDEF;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -295,7 +384,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_YES;
+	XSRETURN_UNDEF;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -328,7 +417,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_NO;
+	XSRETURN_UNDEF;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -1106,7 +1195,7 @@ natatime (n, ...)
 	natatime_args * args;
 	HV *stash = gv_stashpv("List::MoreUtils_na", TRUE);
 
-	CV *closure = newXS(NULL, XS_List__MoreUtils__natatime_iterator, __FILE__);
+	CV *closure = newXS(NULL, XS_List__MoreUtils__Impl__Tassilo__natatime_iterator, __FILE__);
 
 	/* must NOT set prototype on iterator:
 	 * otherwise one cannot write: &$it */
@@ -1193,15 +1282,13 @@ minmax (...)
     PROTOTYPE: @
     CODE:
     {
-	register int i;
-	register SV *minsv, *maxsv, *asv, *bsv;
-	register double min, max, a, b;
-	
+	I32 i;
+	SV *minsv, *maxsv;
+
 	if (!items)
 	    XSRETURN_EMPTY;
 
 	minsv = maxsv = ST(0);
-	min = max = slu_sv_value(minsv);
 
         if (items == 1) {
             EXTEND(SP, 1);
@@ -1210,54 +1297,37 @@ minmax (...)
         }
 
 	for (i = 1; i < items; i += 2) {
-	    asv = ST(i-1);
-	    bsv = ST(i);
-	    a = slu_sv_value(asv);
-	    b = slu_sv_value(bsv);
-	    if (a <= b) {
-		if (min > a) {
-		    min = a;
+	    SV *asv = ST(i-1);
+	    SV *bsv = ST(i);
+	    int cmp = ncmp(asv, bsv);
+	    if (cmp < 0) {
+		int min_cmp = ncmp(minsv, asv);
+		int max_cmp = ncmp(maxsv, bsv);
+		if (min_cmp > 0) {
 		    minsv = asv;
 		}
-		if (max < b) {
-		    max = b;
+		if (max_cmp < 0) {
 		    maxsv = bsv;
 		}
 	    } else {
-		if (min > b) {
-		    min = b;
+		int min_cmp = ncmp(minsv, bsv);
+		int max_cmp = ncmp(maxsv, asv);
+		if (min_cmp > 0) {
 		    minsv = bsv;
 		}
-		if (max < a) {
-		    max = a;
+		if (max_cmp < 0) {
 		    maxsv = asv;
 		}
 	    }
 	}
 
 	if (items & 1) {
-	    asv = ST(items-2);
-	    bsv = ST(items-1);
-	    a = slu_sv_value(asv);
-	    b = slu_sv_value(bsv);
-	    if (a <= b) {
-		if (min > a) {
-		    min = a;
-		    minsv = asv;
-		}
-		if (max < b) {
-		    max = b;
-		    maxsv = bsv;
-		}
-	    } else {
-		if (min > b) {
-		    min = b;
-		    minsv = bsv;
-		}
-		if (max < a) {
-		    max = a;
-		    maxsv = asv;
-		}
+	    SV *rsv = ST(items-1);
+	    if (ncmp(minsv, rsv) > 0) {
+		minsv = rsv;
+	    }
+	    else if (ncmp(maxsv, rsv) < 0) {
+		maxsv = rsv;
 	    }
 	}
 	ST(0) = minsv;
@@ -1454,13 +1524,7 @@ yes:
 OUTPUT:
     RETVAL
 
-void
-_XScompiled ()
-    CODE:
-	XSRETURN_YES;
-
-
-MODULE = List::MoreUtils                PACKAGE = List::MoreUtils_ea
+MODULE = List::MoreUtils_ea             PACKAGE = List::MoreUtils_ea
 
 void
 DESTROY(sv)
@@ -1480,7 +1544,7 @@ DESTROY(sv)
     }
 
 
-MODULE = List::MoreUtils                PACKAGE = List::MoreUtils_na
+MODULE = List::MoreUtils_na             PACKAGE = List::MoreUtils_na
 
 void
 DESTROY(sv)
@@ -1498,4 +1562,217 @@ DESTROY(sv)
 	    CvXSUBANY(code).any_ptr = NULL;
 	}
     }
+
+MODULE = List::MoreUtils::Impl::Alias		PACKAGE = List::MoreUtils::Impl::Alias
+
+void
+any (code,...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    GV *gv;
+    HV *stash;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_NO;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+	    
+    for(i = 1 ; i < items ; ++i) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_YES;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_NO;
+}
+
+void
+all (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_YES;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+ 
+    for(i = 1 ; i < items ; i++) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (!SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_NO;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_YES;
+}
+
+
+void
+none (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_YES;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+
+    for(i = 1 ; i < items ; ++i) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_NO;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_YES;
+}
+
+void
+notall (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_NO;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+	    
+    for(i = 1 ; i < items ; ++i) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (!SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_YES;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_NO;
+}
+
+MODULE = List::MoreUtils::Impl::Modern		PACKAGE = List::MoreUtils::Impl::Modern
+
+void
+any(block,...)
+    SV *block
+ALIAS:
+    none   = 0
+    all    = 1
+    any    = 2
+    notall = 3
+PROTOTYPE: &@
+PPCODE:
+{
+    int ret_true = !(ix & 2); /* return true at end of loop for none/all; false for any/notall */
+    int invert   =  (ix & 1); /* invert block test for all/notall */
+    GV *gv;
+    HV *stash;
+    SV **args = &PL_stack_base[ax];
+    CV *cv    = sv_2cv(block, &stash, &gv, 0);
+
+    if(cv == Nullcv)
+        croak("Not a subroutine reference");
+
+    SAVESPTR(GvSV(PL_defgv));
+#ifdef dMULTICALL
+    if(!CvISXSUB(cv)) {
+        dMULTICALL;
+        I32 gimme = G_SCALAR;
+        int index;
+
+        PUSH_MULTICALL(cv);
+        for(index = 1; index < items; index++) {
+            GvSV(PL_defgv) = args[index];
+
+            MULTICALL;
+            if(SvTRUEx(*PL_stack_sp) ^ invert) {
+                POP_MULTICALL;
+                ST(0) = ret_true ? &PL_sv_no : &PL_sv_yes;
+                XSRETURN(1);
+            }
+        }
+        POP_MULTICALL;
+    }
+    else
+#endif
+    {
+        int index;
+        for(index = 1; index < items; index++) {
+            dSP;
+            GvSV(PL_defgv) = args[index];
+
+            PUSHMARK(SP);
+            call_sv((SV*)cv, G_SCALAR);
+            if(SvTRUEx(*PL_stack_sp) ^ invert) {
+                ST(0) = ret_true ? &PL_sv_no : &PL_sv_yes;
+                XSRETURN(1);
+            }
+        }
+    }
+
+    ST(0) = ret_true ? &PL_sv_yes : &PL_sv_no;
+    XSRETURN(1);
+}
+
+MODULE = List::MoreUtils::Impl::Sno	PACKAGE = List::MoreUtils::Impl::Sno
+
+MODULE = List::MoreUtils		PACKAGE = List::MoreUtils
+
+void
+_XScompiled ()
+    CODE:
+	XSRETURN_YES;
+
+#ifndef lengthof
+# define lengthof(x) (sizeof(x)/sizeof((x)[0]))
+#endif
+
 

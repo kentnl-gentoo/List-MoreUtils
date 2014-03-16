@@ -1,16 +1,28 @@
 Changes
 dhash.h
 inc/Config/AutoConf/LMU.pm
+inc/Tumble.pm
 lib/List/MoreUtils.pm
+lib/List/MoreUtils/Impl/Alias.pm
+lib/List/MoreUtils/Impl/Alias/PP.pm
+lib/List/MoreUtils/Impl/Modern.pm
+lib/List/MoreUtils/Impl/Modern/PP.pm
+lib/List/MoreUtils/Impl/Sno.pm
+lib/List/MoreUtils/Impl/Tassilo.pm
+lib/List/MoreUtils/Impl/Tassilo/PP.pm
+lib/List/MoreUtils/XS.pm
 Makefile.PL
-MANIFEST			This list of files
-MANIFEST.SKIP
-META.yml
+MANIFEST
 MoreUtils.xs
 multicall.h
+ppport.h
 README
-t/01_compile.t
-t/02_perl.t
-t/03_xs.t
-t/lib/Test.pm
+t/lib/LMU/Test/Alias/Funcs.pm
+t/lib/LMU/Test/Alias/Load.pm
+t/lib/LMU/Test/Modern/Funcs.pm
+t/lib/LMU/Test/Modern/Load.pm
+t/lib/LMU/Test/Tassilo/Funcs.pm
+t/lib/LMU/Test/Tassilo/Load.pm
+t/lib/Test/LMU.pm
+META.yml                                 Module YAML meta-data (added by MakeMaker)
 META.json                                Module JSON meta-data (added by MakeMaker)

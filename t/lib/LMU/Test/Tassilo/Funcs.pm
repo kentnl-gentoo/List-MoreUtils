@@ -1,15 +1,18 @@
-package t::lib::Test;
+package LMU::Test::Tassilo::Funcs;
 
-use 5.008003;
+use 5.008001;
 
 use strict;
 #use warnings;
 
 use Test::More;
-use List::MoreUtils ':all';
+use Test::LMU;
+use List::MoreUtils ':tassilo';
+
+use Config;
 
 # Run all tests
-sub run {
+sub run_tests {
     test_any();
     test_all();
     test_none();
@@ -37,12 +40,9 @@ sub run {
     test_part();
     test_minmax();
     test_bsearch();
-    test_sort_by();
-    test_nsort_by();
 
     done_testing();
 }
-
 
 ######################################################################
 # Test code intentionally ignorant of implementation (Pure Perl or XS)
@@ -57,7 +57,7 @@ sub test_any {
     is_true( any { defined } @list );
     is_false( any { not defined } @list );
     is_true( any { not defined } undef );
-    is_false( any { } );
+    is_undef( any { } );
 
     leak_free_ok(any => sub {
         my $ok = any { $_ == 5000 } @list;
@@ -75,7 +75,7 @@ sub test_all {
     is_true( all { defined } @list );
     is_true( all { $_ > 0 } @list );
     is_false( all { $_ < 5000 } @list );
-    is_true( all { } );
+    is_undef( all { } );
 
     leak_free_ok(all => sub {
         my $ok  = all { $_ == 5000 } @list;
@@ -89,7 +89,7 @@ sub test_none {
     is_true( none { not defined } @list );
     is_true( none { $_ > 10000 } @list );
     is_false( none { defined } @list );
-    is_true( none { } );
+    is_undef( none { } );
 
     leak_free_ok(none => sub {
         my $ok  = none { $_ == 5000 } @list;
@@ -103,7 +103,7 @@ sub test_notall {
     is_true( notall { ! defined } @list );
     is_true( notall { $_ < 10000 } @list );
     is_false( notall { $_ <= 10000 } @list );
-    is_false( notall { } );
+    is_undef( notall { } );
 
     leak_free_ok(notall => sub {
         my $ok  = notall { $_ == 5000 } @list;
@@ -227,12 +227,14 @@ sub test_insert_after_string {
 sub test_apply {
     # Test the null case
     my $null_scalar = apply { };
-    my @null_list   = apply { };
     is( $null_scalar, undef, 'apply(null) returns undef' );
+
+    my @null_list   = apply { };
     is_deeply( \@null_list, [ ], 'apply(null) returns null list' );
 
     # Normal cases
     my @list  = ( 0 .. 9 );
+    my @list1  = ( 0 .. 9 );
     my @list1 = apply { $_++ } @list;
     ok( is_deeply( \@list,  [ 0 .. 9  ] ) );
     ok( is_deeply( \@list1, [ 1 .. 10 ] ) );
@@ -714,11 +716,17 @@ sub test_part {
 
     $i = 0;
     @part = part { $i++ == 0 ? 0 : -1 } @list;
-    ok( is_deeply($part[0], [ 1 .. 12 ]) );
+    is_deeply($part[0], [ 1 .. 12 ], "part with negative indices");
 
-    local $^W = 0;
-    @part = part { undef } @list;
-    ok( is_deeply($part[0], [ 1 .. 12 ]) );
+    {
+	local $TODO = "needs to be spit out in XS";
+	my @warns = ();
+	local $SIG{__WARN__} = sub { push @warns, [@_] };
+	@part = part { undef } @list;
+	is_deeply($part[0], [ 1 .. 12 ], "part with undef");
+	like($warns[0], qr/Use of uninitialized value in array element.*line\s+\d+\.$/, "warning of undef");
+	is_deeply( \@warns, [ ($warns[0]) x 12 ], "amount of similar undef warnings" );
+    }
 
     @part = part { 10000 } @list;
     ok( is_deeply($part[10000], [ @list ]) );
@@ -779,6 +787,35 @@ sub test_minmax {
     $min = 2;
     is( $max, -1 );
 
+    # prove overrun
+    my $uvmax = ~0;
+    my $ivmax = $uvmax >> 1;
+    my $ivmin = (0-$ivmax)-1;
+    my @low_ints = map { $ivmin + $_ } (0..10);
+    ($min, $max) = minmax @low_ints;
+    is( $min, $ivmin, "minmax finds ivmin" );
+    is( $max, $ivmin+10, "minmax finds ivmin + 10" );
+
+    my @high_ints = map { $ivmax - $_ } (0..10);
+    ($min, $max) = minmax @high_ints;
+    is( $min, $ivmax-10, "minmax finds ivmax-10" );
+    is( $max, $ivmax, "minmax finds ivmax" );
+
+    my @mixed_ints = map { ($ivmin + $_, $ivmax - $_) } (0..10);
+    ($min, $max) = minmax @mixed_ints;
+    is( $min, $ivmin, "minmax finds ivmin" );
+    is( $max, $ivmax, "minmax finds ivmax" );
+
+    my @high_uints = map { $uvmax - $_ } (0..10);
+    ($min, $max) = minmax @high_uints;
+    is( $min, $uvmax-10, "minmax finds uvmax-10" );
+    is( $max, $uvmax, "minmax finds uvmax" );
+
+    my @mixed_nums = map { ($ivmin + $_, $uvmax - $_) } (0..10);
+    ($min, $max) = minmax @mixed_nums;
+    is( $min, $ivmin, "minmax finds ivmin" );
+    is( $max, $uvmax, "minmax finds uvmax" );
+
     leak_free_ok(minmax => sub {
         @list = ( 0, -1.1, 3.14, 1 / 7, 10000, -10 / 3 );
         ($min, $max) = minmax @list;
@@ -816,61 +853,6 @@ sub test_bsearch {
 	    scalar bsearch { grow_stack(); $_ - $elem or die "Goal!"; $_ - $elem } @list;
 	};
     });
-}
-
-sub test_sort_by {
-    my @list = map { [$_] } 1 .. 100;
-    is_deeply([sort_by { $_->[0] } @list], [map { [$_] } sort { $a cmp $b } 1..100]);
-}
-
-sub test_nsort_by {
-    my @list = map { [$_] } 1 .. 100;
-    is_deeply([nsort_by { $_->[0] } @list], [map { [$_] } sort { $a <=> $b } 1..100]);
-}
-
-
-
-
-
-######################################################################
-# Support Functions
-
-sub is_true {
-    local $Test::Builder::Level = $Test::Builder::Level + 1;
-    die "Expected 1 param" unless @_ == 1;
-    ok( $_[0], "is_true ()" );
-}
-
-sub is_false {
-    local $Test::Builder::Level = $Test::Builder::Level + 1;
-    die "Expected 1 param" unless @_ == 1;
-    ok( !$_[0], "is_false()" );
-}
-
-my @bigary = ( 1 ) x 500;
-
-sub func { }
-
-sub grow_stack {
-    func(@bigary);
-}
-
-sub leak_free_ok {
-    my $name = shift;
-    my $code = shift;
-    SKIP: {
-        skip 'Test::LeakTrace not installed', 1
-            unless eval { require Test::LeakTrace; 1 };
-	local $Test::Builder::Level = $Test::Builder::Level + 1;
-        &Test::LeakTrace::no_leaks_ok($code, "No memory leaks in $name");
-    }
-}
-
-{
-    package DieOnStringify;
-    use overload '""' => \&stringify;
-    sub new { bless {}, shift }
-    sub stringify { die 'DieOnStringify exception' }
 }
 
 1;

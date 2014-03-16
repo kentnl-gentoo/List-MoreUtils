@@ -6,7 +6,7 @@
       "Jens Rehsack <rehsack@cpan.org>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.78, CPAN::Meta::Converter version 2.132661",
+   "generated_by" : "ExtUtils::MakeMaker version 6.9, CPAN::Meta::Converter version 2.140640",
    "license" : [
       "perl_5"
    ],
@@ -24,26 +24,55 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "Test::More" : "0.88"
+            "ExtUtils::MakeMaker" : "0"
          }
       },
       "configure" : {
          "requires" : {
+            "Carp" : "0",
             "Config::AutoConf" : "0.19",
-            "ExtUtils::MakeMaker" : "6.52"
+            "Data::Tumbler" : "0.003",
+            "ExtUtils::MakeMaker" : "6.86",
+            "Module::Pluggable::Object" : "5.1",
+            "Test::WriteVariants" : "0.003"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Test::CPAN::Changes" : "0",
+            "Test::CheckManifest" : "0",
+            "Test::Pod" : "0",
+            "Test::Pod::Coverage" : "0",
+            "Test::Pod::Spelling::CommonMistakes" : "0"
          }
       },
       "runtime" : {
+         "recommends" : {
+            "perl" : "5.018001"
+         },
          "requires" : {
-            "perl" : "5.008003"
+            "Sub::Exporter" : "0",
+            "XSLoader" : "0",
+            "perl" : "5.008001"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::More" : "0.9"
          }
       }
    },
-   "release_status" : "stable",
+   "release_status" : "testing",
    "resources" : {
+      "bugtracker" : {
+         "mailto" : "list-moreutils@example.com",
+         "web" : "http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils"
+      },
+      "homepage" : "https://metacpan.org/release/List-MoreUtils",
       "repository" : {
-         "url" : "https://github.com/perl5-utils/List-MoreUtils"
+         "type" : "git",
+         "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.400"
+   "version" : "0.400_002"
 }
