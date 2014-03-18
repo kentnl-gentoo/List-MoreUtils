@@ -15,7 +15,7 @@ configure_requires:
   Module::Pluggable::Object: '5.1'
   Test::WriteVariants: '0.003'
 dynamic_config: 1
-generated_by: 'ExtUtils::MakeMaker version 6.9, CPAN::Meta::Converter version 2.140640'
+generated_by: 'ExtUtils::MakeMaker version 6.92, CPAN::Meta::Converter version 2.140640'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -35,4 +35,4 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils
   homepage: https://metacpan.org/release/List-MoreUtils
   repository: https://github.com/perl5-utils/List-MoreUtils
-version: 0.400_002
+version: 0.400_003

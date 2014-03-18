@@ -17,11 +17,15 @@ MoreUtils.xs
 multicall.h
 ppport.h
 README
+t/lib/LMU/Test/ab.pm
 t/lib/LMU/Test/Alias/Funcs.pm
+t/lib/LMU/Test/Alias/Import.pm
 t/lib/LMU/Test/Alias/Load.pm
 t/lib/LMU/Test/Modern/Funcs.pm
+t/lib/LMU/Test/Modern/Import.pm
 t/lib/LMU/Test/Modern/Load.pm
 t/lib/LMU/Test/Tassilo/Funcs.pm
+t/lib/LMU/Test/Tassilo/Import.pm
 t/lib/LMU/Test/Tassilo/Load.pm
 t/lib/Test/LMU.pm
 META.yml                                 Module YAML meta-data (added by MakeMaker)
