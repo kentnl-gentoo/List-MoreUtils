@@ -21,6 +21,8 @@ t/lib/LMU/Test/ab.pm
 t/lib/LMU/Test/Alias/Funcs.pm
 t/lib/LMU/Test/Alias/Import.pm
 t/lib/LMU/Test/Alias/Load.pm
+t/lib/LMU/Test/Compat/Funcs.pm
+t/lib/LMU/Test/Compat/Import.pm
 t/lib/LMU/Test/Modern/Funcs.pm
 t/lib/LMU/Test/Modern/Import.pm
 t/lib/LMU/Test/Modern/Load.pm

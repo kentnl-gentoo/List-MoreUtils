@@ -3,42 +3,36 @@ package List::MoreUtils;
 use 5.008001;
 use strict;
 use warnings;
+use Carp qw/carp/;
 
+BEGIN {
+    our $VERSION  = '0.400_004';
+}
+
+use Exporter::Tiny qw();
 use Module::Runtime qw(use_module);
 use List::MoreUtils::XS qw();    # try loading XS
 
-use vars qw{$VERSION @ISA};
-my @tag_hist;
+our @ISA = qw(Exporter::Tiny);
+our @EXPORT_OK = (
+    qw(true false
+      firstidx lastidx
+      insert_after insert_after_string
+      apply indexes
+      after after_incl before before_incl
+      lastval
+      each_array each_arrayref
+      pairwise natatime
+      mesh uniq
+      minmax part
+      bsearch),
+    # following ones have several implementations
+    qw(any all none notall firstval sort_by nsort_by),
+    # those are just aliases
+    qw(first_index last_index first_value last_value zip distinct)
+);
 
-BEGIN
-{
-    $VERSION  = '0.400_003';
-    @tag_hist = qw(alias sno tassilo modern);
-}
-
-use Sub::Exporter '-setup' => {
-    exports => [
-        map { $_ => \&_build_imp } (
-            qw(true false
-              firstidx lastidx
-              insert_after insert_after_string
-              apply indexes
-              after after_incl before before_incl
-              lastval
-              each_array each_arrayref
-              pairwise natatime
-              mesh uniq
-              minmax part
-              bsearch),
-            # following ones have several implementations
-            qw(any all none notall firstval sort_by nsort_by),
-            # those are just aliases
-            qw(first_index last_index first_value last_value zip distinct)
-                                   )
-               ],
-    groups => { map { $_ => \&_build_lmu_group } ( @tag_hist, "all" ) }
-                              };
-
+my @tag_hist = qw(alias sno tassilo modern);
 my %pkg_tags = (
     tassilo => {
         module    => "List::MoreUtils::Impl::Tassilo",
@@ -85,74 +79,50 @@ my %alias_list = (
                    distinct    => "uniq",
                  );
 
-my %impl_by_caller;
-
-my $default_imp = "alias";
-
-sub _build_imp
+sub _export_tags
 {
-    my ( $class, $name, $arg ) = @_;
-    my $i = 0;
-    my @caller;
-    do
-    {
-        @caller = caller( $i++ );
-    } while ( $caller[0] eq "Sub::Exporter" );
+    map { $_ => [ keys %{ $pkg_tags{$_}{functions} } ] } keys %pkg_tags;
+}
+
+sub _export_alias_names
+{
+    alias_names => [ keys %alias_list ];
+}
+
+sub _exporter_expand_sub
+{
+    my ( $class, $name, $arg, $globals ) = @_;
 
     my @impls = ( "HASH" eq ref $arg and $arg->{impl} ) ? $arg->{impl} : @tag_hist;
-    defined $alias_list{$name} and $name = $alias_list{$name};
+    my $seek  = defined($alias_list{$name}) ? $alias_list{$name} : $name;
 
     foreach my $impl (@impls)
     {
         my $exp_sub;
-        defined $pkg_tags{$impl}->{functions}->{$name}
+        defined $pkg_tags{$impl}->{functions}->{$seek}
           and use_module( $pkg_tags{$impl}->{module} )
-          and $exp_sub = $pkg_tags{$impl}->{module}->can($name);
-
-        my $nm = defined $arg->{as} ? $arg->{as} : $name;
-        $exp_sub and $impl_by_caller{ $caller[0] }->{$name}->{$nm} = $impl;
-        $exp_sub and return $exp_sub;
+          and $exp_sub = $pkg_tags{$impl}->{module}->can($seek);
+        $exp_sub and return ($name => $exp_sub);
     }
 
-    return;
+    return $class->SUPER::_exporter_expand_sub($name, $arg, $globals);
 }
 
-sub _build_lmu_group
+sub _exporter_expand_tag
 {
-    my ( $class, $group, $arg ) = @_;
-    my $i = 0;
-    my @caller;
-    do
+    my ( $class, $group, $arg, $globals ) = @_;
+
+    if ($pkg_tags{$group})
     {
-        @caller = caller( $i++ );
-    } while ( $caller[0] eq "Sub::Exporter" );
-
-    !ref $group and $group eq "all" and $group = \@tag_hist;
-    my @impls = "ARRAY" eq ref $group ? @$group : ($group);
-
-    my %exp_subs;
-    foreach my $impl (@impls)
-    {
-        foreach my $func ( keys %{ $pkg_tags{$impl}->{functions} } )
-        {
-            defined $exp_subs{$func} and next;
-            defined $impl_by_caller{ $caller[0] }->{$func}->{$func} and next;
-
-            use_module( $pkg_tags{$impl}->{module} );
-            $exp_subs{$func} = $pkg_tags{$impl}->{module}->can($func);
-
-            $impl_by_caller{ $caller[0] }->{$func}->{$func} = $impl;
-        }
+        my %functions = %{ $pkg_tags{$group}->{functions} };
+        $functions{$alias_list{$_}} && $functions{$_}++ for keys(%alias_list);
+        return map [ $_ => { impl => $group, %{$arg||{}} } ], keys(%functions);
     }
-
-    foreach my $alias ( keys %alias_list )
-    {
-        my $func = $alias_list{$alias};
-        $exp_subs{$alias} = $exp_subs{$func};
-    }
-
-    return \%exp_subs;
+    
+    return $class->SUPER::_exporter_expand_tag($group, $arg, $globals);
 }
+
+{ List::MoreUtils->import(':all'); }
 
 =pod
 
@@ -171,9 +141,9 @@ List::MoreUtils - Provide the stuff missing in List::Util
 
     use List::MoreUtils any => { impl => 'modern' },
                         all =>  { impl => 'tassilo' },
-			'none', 'notall', # above precedence
-			'firstidx' => { impl => 'tassilo' },
-			all => { impl => 'modern', as => 'modern_all' };
+                        'none', 'notall', # above precedence
+                        'firstidx' => { impl => 'tassilo' },
+                        all => { impl => 'modern', as => 'modern_all' };
 
 =head1 DESCRIPTION
 
@@ -196,6 +166,55 @@ It may make more sense though to only import the stuff your program actually
 needs:
 
     use List::MoreUtils qw{ any firstidx };
+
+=head2 IMPLEMENTATIONS
+
+B<List::MoreUtils> supports several implementations of some functions. The
+available ones are:
+
+=over 4
+
+=item tassilo
+
+This is the original author of List::MoreUtils. His implementations shall
+be default and will be probably later.
+
+=item alias
+
+This is a self-volunteered author who accidently broke the API of the
+original author but it was recognized to late and we currently have modules
+on CPAN and DarkPAN relying on the broken API. So this is the I<current>
+default implementation for some time ...
+
+=item modern
+
+This implementation contains functions adapted by L<List::Util> since it
+has a new maintainer. Unfortunately the API isn't 100% List::MoreUtils
+compatible, but since List::MoreUtils provides always a pure Perl
+implementation, it might be a valueable upgrade path...
+
+=item sno
+
+This implementation is for functions by the current author. Currently it's
+empty, but I just reserve the name.
+
+=item all
+
+This is a precedence list of existing implementations. Currently it's
+C<qw(alias sno tassilo modern)>, but the C<alias> precedence will put at
+the end of the queue within some releases. Be prepared.
+
+=back
+
+=head2 IMPLICIT
+
+B<List::MoreUtils> silently supported just being required in historic
+versions. This support needs to be removed for cleaning up accidents of
+short history.
+
+In a close release the silent support for C<use after require> will be
+discarded. First releases will show warnings before it will be removed
+completely.
 
 =head1 ENVIRONMENT
 
@@ -386,7 +405,8 @@ Tassilo von Parseval E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
 Some parts copyright 2011 Aaron Crane.
 
 Copyright 2004 - 2010 by Tassilo von Parseval
-Copyright 2013 by Jens Rehsack
+
+Copyright 2013 - 2014 by Jens Rehsack
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,

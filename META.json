@@ -34,7 +34,9 @@
             "Data::Tumbler" : "0.003",
             "ExtUtils::MakeMaker" : "6.86",
             "Module::Pluggable::Object" : "5.1",
-            "Test::WriteVariants" : "0.003"
+            "Module::Runtime" : "0",
+            "Test::WriteVariants" : "0.003",
+            "parent" : "0"
          }
       },
       "develop" : {
@@ -48,15 +50,19 @@
       },
       "runtime" : {
          "recommends" : {
-            "perl" : "5.018001"
+            "perl" : "v5.18.2"
          },
          "requires" : {
-            "Sub::Exporter" : "0",
+            "Exporter::Tiny" : "0.026",
             "XSLoader" : "0",
+            "parent" : "0",
             "perl" : "5.008001"
          }
       },
       "test" : {
+         "recommends" : {
+            "Test::LeakTrace" : "0"
+         },
          "requires" : {
             "Test::More" : "0.9"
          }
@@ -74,5 +80,5 @@
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.400_003"
+   "version" : "0.400_004"
 }

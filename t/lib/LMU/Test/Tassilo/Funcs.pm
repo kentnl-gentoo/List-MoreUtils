@@ -3,13 +3,16 @@ package LMU::Test::Tassilo::Funcs;
 use 5.008001;
 
 use strict;
-#use warnings;
+use warnings;
 
 use Test::More;
 use Test::LMU;
 use List::MoreUtils ':tassilo';
 
 use Config;
+
+my $have_scalar_util;
+eval { use Scalar::Util; $have_scalar_util = 1; };
 
 # Run all tests
 sub run_tests {
@@ -234,7 +237,6 @@ sub test_apply {
 
     # Normal cases
     my @list  = ( 0 .. 9 );
-    my @list1  = ( 0 .. 9 );
     my @list1 = apply { $_++ } @list;
     ok( is_deeply( \@list,  [ 0 .. 9  ] ) );
     ok( is_deeply( \@list1, [ 1 .. 10 ] ) );
@@ -272,10 +274,36 @@ sub test_indexes {
     @x = indexes { $_ > 5 } ( 1 .. 4 );
     is_deeply( \@x, [ ], 'Got the null list' );
 
+    my ($lr,@s,@n,@o,@e);
     leak_free_ok(indexes => sub {
-        @x = indexes { $_ > 5 } ( 4 .. 9 );
-        @x = indexes { $_ > 5 } ( 1 .. 4 );
+        $lr = 1;
+	@s = indexes { $_ > 5 } ( 4 .. 9 );
+        @n = indexes { $_ > 5 } ( 1 .. 5 );
+	@o = indexes { $_ & 1 } ( 10 .. 15 );
+	@e = indexes { !($_ & 1) } ( 10 .. 15 );
     });
+    $lr and is_deeply(\@s, [2..5], "indexes/leak: some");
+    $lr and is_deeply(\@n, [], "indexes/leak: none");
+    $lr and is_deeply(\@o, [1,3,5], "indexes/leak: odd");
+    $lr and is_deeply(\@e, [0,2,4], "indexes/leak: even");
+
+    leak_free_ok(indexes => sub {
+        @s = indexes { grow_stack; $_ > 5 } ( 4 .. 9 );
+        @n = indexes { grow_stack; $_ > 5 } ( 1 .. 4 );
+	@o = indexes { grow_stack; $_ & 1 } ( 10 .. 15 );
+	@e = indexes { grow_stack; !($_ & 1) } ( 10 .. 15 );
+    });
+
+    $lr and is_deeply(\@s, [2..5], "indexes/leak: some");
+    $lr and is_deeply(\@n, [], "indexes/leak: none");
+    $lr and is_deeply(\@o, [1,3,5], "indexes/leak: odd");
+    $lr and is_deeply(\@e, [0,2,4], "indexes/leak: even");
+
+    if($have_scalar_util) {
+	my $ref = \(indexes(sub{1}, 123));
+	Scalar::Util::weaken($ref);
+	is($ref, undef, "weakened away");
+    }
 }
 
 # In the following, the @dummy variable is needed to circumvent
@@ -526,10 +554,12 @@ sub test_pairwise {
     (@a, @b) = ();
     push @a, int rand(1000) for 0 .. rand(1000);
     push @b, int rand(1000) for 0 .. rand(1000);
-    local $^W = 0;
-    my @res1 = pairwise {$a+$b} @a, @b;
-    my @res2 = pairwise_perl {$a+$b} @a, @b;
-    ok( is_deeply(\@res1, \@res2) );
+    SCOPE: {
+	local $SIG{__WARN__} = sub {}; # XXX 
+	my @res1 = pairwise {$a+$b} @a, @b;
+	my @res2 = pairwise_perl {$a+$b} @a, @b;
+	ok( is_deeply(\@res1, \@res2) );
+    }
 
     @a = qw/a b c/;
     @b = qw/1 2 3/;
