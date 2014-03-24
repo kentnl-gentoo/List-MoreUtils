@@ -1,18 +1,18 @@
-package List::MoreUtils::Impl::Alias;
+package List::MoreUtils::Impl::Relax;
 
 use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION   = '0.400_004';
+our $VERSION   = '0.400_005';
 
 use List::MoreUtils::XS qw(); # try load XS stuff ...
 
 unless(defined &any)
 {
-    my @pp_imp = map { "*$_ = \\&List::MoreUtils::Impl::Alias::PP::$_;" }
+    my @pp_imp = map { "*$_ = \\&List::MoreUtils::Impl::Relax::PP::$_;" }
 	qw(any all none notall);
-    my $pp_stuff = join( "\n", "use List::MoreUtils::Impl::Alias::PP;", @pp_imp );
+    my $pp_stuff = join( "\n", "use List::MoreUtils::Impl::Relax::PP;", @pp_imp );
     eval $pp_stuff;
     die $@ if $@;
 }
@@ -41,11 +41,11 @@ __END__
 
 =head1 NAME
 
-List::MoreUtils::Impl::Alias - Provide List::MoreUtils implementation by Adam Kennedy
+List::MoreUtils::Impl::Relax - Provide relaxed List::MoreUtils implementation (originally by Adam Kennedy)
 
 =head1 SYNOPSIS
 
-  use List::MoreUtils qw(:alias);
+  use List::MoreUtils qw(:relax);
 
 =head1 FUNCTIONS
 

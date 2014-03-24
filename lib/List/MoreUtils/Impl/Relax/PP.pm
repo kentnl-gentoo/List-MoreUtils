@@ -1,20 +1,20 @@
-package List::MoreUtils::Impl::Alias::PP;
+package List::MoreUtils::Impl::Relax::PP;
 
 use strict;
 use warnings;
 
-our $VERSION   = '0.400_004';
+our $VERSION   = '0.400_005';
 
 =pod
 
 =head1 NAME
 
-List::MoreUtils::Impl::Alias::PP - Provide List::MoreUtils implementation by Adam Kennedy
+List::MoreUtils::Impl::Relax::PP - Provide relaxed List::MoreUtils implementation (originally by Adam Kennedy)
 
 =head1 SYNOPSIS
 
   BEGIN { $ENV{LIST_MOREUTILS_PP} = 1; }
-  use List::MoreUtils qw(:alias);
+  use List::MoreUtils qw(:relax);
 
 =cut
 

@@ -3,13 +3,12 @@ dhash.h
 inc/Config/AutoConf/LMU.pm
 inc/Tumble.pm
 lib/List/MoreUtils.pm
-lib/List/MoreUtils/Impl/Alias.pm
-lib/List/MoreUtils/Impl/Alias/PP.pm
 lib/List/MoreUtils/Impl/Modern.pm
 lib/List/MoreUtils/Impl/Modern/PP.pm
-lib/List/MoreUtils/Impl/Sno.pm
-lib/List/MoreUtils/Impl/Tassilo.pm
-lib/List/MoreUtils/Impl/Tassilo/PP.pm
+lib/List/MoreUtils/Impl/Relax.pm
+lib/List/MoreUtils/Impl/Relax/PP.pm
+lib/List/MoreUtils/Impl/Strict.pm
+lib/List/MoreUtils/Impl/Strict/PP.pm
 lib/List/MoreUtils/XS.pm
 Makefile.PL
 MANIFEST
@@ -18,17 +17,17 @@ multicall.h
 ppport.h
 README
 t/lib/LMU/Test/ab.pm
-t/lib/LMU/Test/Alias/Funcs.pm
-t/lib/LMU/Test/Alias/Import.pm
-t/lib/LMU/Test/Alias/Load.pm
 t/lib/LMU/Test/Compat/Funcs.pm
 t/lib/LMU/Test/Compat/Import.pm
 t/lib/LMU/Test/Modern/Funcs.pm
 t/lib/LMU/Test/Modern/Import.pm
 t/lib/LMU/Test/Modern/Load.pm
-t/lib/LMU/Test/Tassilo/Funcs.pm
-t/lib/LMU/Test/Tassilo/Import.pm
-t/lib/LMU/Test/Tassilo/Load.pm
+t/lib/LMU/Test/Relax/Funcs.pm
+t/lib/LMU/Test/Relax/Import.pm
+t/lib/LMU/Test/Relax/Load.pm
+t/lib/LMU/Test/Strict/Funcs.pm
+t/lib/LMU/Test/Strict/Import.pm
+t/lib/LMU/Test/Strict/Load.pm
 t/lib/Test/LMU.pm
 META.yml                                 Module YAML meta-data (added by MakeMaker)
 META.json                                Module JSON meta-data (added by MakeMaker)

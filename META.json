@@ -34,7 +34,6 @@
             "Data::Tumbler" : "0.003",
             "ExtUtils::MakeMaker" : "6.86",
             "Module::Pluggable::Object" : "5.1",
-            "Module::Runtime" : "0",
             "Test::WriteVariants" : "0.003",
             "parent" : "0"
          }
@@ -54,6 +53,7 @@
          },
          "requires" : {
             "Exporter::Tiny" : "0.026",
+            "Module::Runtime" : "0",
             "XSLoader" : "0",
             "parent" : "0",
             "perl" : "5.008001"
@@ -80,5 +80,5 @@
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.400_004"
+   "version" : "0.400_005"
 }

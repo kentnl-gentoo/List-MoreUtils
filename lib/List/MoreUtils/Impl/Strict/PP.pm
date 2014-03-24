@@ -1,20 +1,20 @@
-package List::MoreUtils::Impl::Tassilo::PP;
+package List::MoreUtils::Impl::Strict::PP;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.400_004';
+our $VERSION = '0.400_005';
 
 =pod
 
 =head1 NAME
 
-List::MoreUtils::Impl::Tassilo::PP - Provide List::MoreUtils implementation by Tassilo
+List::MoreUtils::Impl::Strict::PP - Provide strict List::MoreUtils implementation (originally by Tassilo von Parseval)
 
 =head1 SYNOPSIS
 
   BEGIN { $ENV{LIST_MOREUTILS_PP} = 1; }
-  use List::MoreUtils qw(:tassilo);
+  use List::MoreUtils qw(:strict);
 
 =cut
 

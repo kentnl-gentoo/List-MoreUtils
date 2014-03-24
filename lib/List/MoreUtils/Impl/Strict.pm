@@ -1,23 +1,22 @@
-package List::MoreUtils::Impl::Tassilo;
+package List::MoreUtils::Impl::Strict;
 
 use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION   = '0.400_004';
+our $VERSION   = '0.400_005';
 
 use List::MoreUtils::XS qw(); # try load XS stuff ...
 
 unless( __PACKAGE__->can("any"))
 {
-    Test::More::diag("Mööp") if $INC{"Test/Pod/Coverage.pm"};
-    my @pp_imp = map { "*$_ = \\&List::MoreUtils::Impl::Tassilo::PP::$_;" }
+    my @pp_imp = map { "*$_ = \\&List::MoreUtils::Impl::Strict::PP::$_;" }
 	qw(any all none notall true false
            firstidx lastidx insert_after insert_after_string
            apply indexes after after_incl before before_incl
            firstval lastval each_array each_arrayref pairwise
 	   natatime mesh uniq minmax part bsearch);
-    my $pp_stuff = join( "\n", "use List::MoreUtils::Impl::Tassilo::PP;", @pp_imp );
+    my $pp_stuff = join( "\n", "use List::MoreUtils::Impl::Strict::PP;", @pp_imp );
     eval $pp_stuff;
     die $@ if $@;
 }
@@ -30,11 +29,11 @@ __END__
 
 =head1 NAME
 
-List::MoreUtils::Impl::Tassilo - Provide List::MoreUtils implementation by Tassilo
+List::MoreUtils::Impl::Strict - Provide strict List::MoreUtils implementation (originally by Tassilo von Parseval)
 
 =head1 SYNOPSIS
 
-  use List::MoreUtils qw(:tassilo);
+  use List::MoreUtils qw(:strict);
 
 =head1 FUNCTIONS
 
