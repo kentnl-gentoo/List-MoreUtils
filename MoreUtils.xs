@@ -250,7 +250,7 @@ sv_tainted(SV *sv)
 	register int i;									\
 	arrayeach_args * args;								\
 	HV *stash = gv_stashpv("List::MoreUtils_ea", TRUE);				\
-	CV *closure = newXS(NULL, XS_List__MoreUtils__Impl__Strict__array_iterator, __FILE__);	\
+	CV *closure = newXS(NULL, XS_List__MoreUtils__array_iterator, __FILE__);	\
 											\
 	/* prototype */									\
 	sv_setpv((SV*)closure, ";$");							\
@@ -304,7 +304,46 @@ insert_after (int idx, SV *what, AV *av) {
 
 }
 
-MODULE = List::MoreUtils::Impl::Strict		PACKAGE = List::MoreUtils::Impl::Strict
+MODULE = List::MoreUtils_ea             PACKAGE = List::MoreUtils_ea
+
+void
+DESTROY(sv)
+    SV *sv;
+    CODE:
+    {
+	register int i;
+	CV *code = (CV*)SvRV(sv);
+	arrayeach_args *args = CvXSUBANY(code).any_ptr;
+	if (args) {
+	    for (i = 0; i < args->navs; ++i)
+		SvREFCNT_dec(args->avs[i]);
+	    Safefree(args->avs);
+	    Safefree(args);
+	    CvXSUBANY(code).any_ptr = NULL;
+	}
+    }
+
+
+MODULE = List::MoreUtils_na             PACKAGE = List::MoreUtils_na
+
+void
+DESTROY(sv)
+    SV *sv;
+    CODE:
+    {
+	register int i;
+	CV *code = (CV*)SvRV(sv);
+	natatime_args *args = CvXSUBANY(code).any_ptr;
+	if (args) {
+	    for (i = 0; i < args->nsvs; ++i)
+		SvREFCNT_dec(args->svs[i]);
+	    Safefree(args->svs);
+	    Safefree(args);
+	    CvXSUBANY(code).any_ptr = NULL;
+	}
+    }
+
+MODULE = List::MoreUtils		PACKAGE = List::MoreUtils
 
 void
 any (code,...)
@@ -321,7 +360,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_UNDEF;
+	XSRETURN_NO;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -354,7 +393,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_UNDEF;
+	XSRETURN_YES;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -388,7 +427,7 @@ CODE:
     CV *cv;
 
     if (items <= 1)
-	XSRETURN_UNDEF;
+	XSRETURN_YES;
 
     cv = sv_2cv(code, &stash, &gv, 0);
     PUSH_MULTICALL(cv);
@@ -408,6 +447,139 @@ CODE:
 
 void
 notall (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_NO;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+	    
+    for(i = 1 ; i < items ; ++i) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (!SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_YES;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_NO;
+}
+
+void
+any_u (code,...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    GV *gv;
+    HV *stash;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_UNDEF;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+	    
+    for(i = 1 ; i < items ; ++i) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_YES;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_NO;
+}
+
+void
+all_u (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_UNDEF;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+ 
+    for(i = 1 ; i < items ; i++) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (!SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_NO;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_YES;
+}
+
+
+void
+none_u (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    register int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *cv;
+
+    if (items <= 1)
+	XSRETURN_UNDEF;
+
+    cv = sv_2cv(code, &stash, &gv, 0);
+    PUSH_MULTICALL(cv);
+    SAVESPTR(GvSV(PL_defgv));
+
+    for(i = 1 ; i < items ; ++i) {
+	GvSV(PL_defgv) = args[i];
+	MULTICALL;
+	if (SvTRUE(*PL_stack_sp)) {
+	    POP_MULTICALL;
+	    XSRETURN_NO;
+	}
+    }
+    POP_MULTICALL;
+    XSRETURN_YES;
+}
+
+void
+notall_u (code, ...)
     SV *code;
 PROTOTYPE: &@
 CODE:
@@ -1199,7 +1371,7 @@ natatime (n, ...)
 	natatime_args * args;
 	HV *stash = gv_stashpv("List::MoreUtils_na", TRUE);
 
-	CV *closure = newXS(NULL, XS_List__MoreUtils__Impl__Strict__natatime_iterator, __FILE__);
+	CV *closure = newXS(NULL, XS_List__MoreUtils__natatime_iterator, __FILE__);
 
 	/* must NOT set prototype on iterator:
 	 * otherwise one cannot write: &$it */
@@ -1528,253 +1700,7 @@ yes:
 OUTPUT:
     RETVAL
 
-MODULE = List::MoreUtils_ea             PACKAGE = List::MoreUtils_ea
-
-void
-DESTROY(sv)
-    SV *sv;
-    CODE:
-    {
-	register int i;
-	CV *code = (CV*)SvRV(sv);
-	arrayeach_args *args = CvXSUBANY(code).any_ptr;
-	if (args) {
-	    for (i = 0; i < args->navs; ++i)
-		SvREFCNT_dec(args->avs[i]);
-	    Safefree(args->avs);
-	    Safefree(args);
-	    CvXSUBANY(code).any_ptr = NULL;
-	}
-    }
-
-
-MODULE = List::MoreUtils_na             PACKAGE = List::MoreUtils_na
-
-void
-DESTROY(sv)
-    SV *sv;
-    CODE:
-    {
-	register int i;
-	CV *code = (CV*)SvRV(sv);
-	natatime_args *args = CvXSUBANY(code).any_ptr;
-	if (args) {
-	    for (i = 0; i < args->nsvs; ++i)
-		SvREFCNT_dec(args->svs[i]);
-	    Safefree(args->svs);
-	    Safefree(args);
-	    CvXSUBANY(code).any_ptr = NULL;
-	}
-    }
-
-MODULE = List::MoreUtils::Impl::Relax		PACKAGE = List::MoreUtils::Impl::Relax
-
-void
-any (code,...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    register int i;
-    GV *gv;
-    HV *stash;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *cv;
-
-    if (items <= 1)
-	XSRETURN_NO;
-
-    cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(cv);
-    SAVESPTR(GvSV(PL_defgv));
-	    
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_YES;
-	}
-    }
-    POP_MULTICALL;
-    XSRETURN_NO;
-}
-
-void
-all (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    register int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *cv;
-
-    if (items <= 1)
-	XSRETURN_YES;
-
-    cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(cv);
-    SAVESPTR(GvSV(PL_defgv));
- 
-    for(i = 1 ; i < items ; i++) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_NO;
-	}
-    }
-    POP_MULTICALL;
-    XSRETURN_YES;
-}
-
-
-void
-none (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    register int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *cv;
-
-    if (items <= 1)
-	XSRETURN_YES;
-
-    cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_NO;
-	}
-    }
-    POP_MULTICALL;
-    XSRETURN_YES;
-}
-
-void
-notall (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    register int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *cv;
-
-    if (items <= 1)
-	XSRETURN_NO;
-
-    cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(cv);
-    SAVESPTR(GvSV(PL_defgv));
-	    
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_YES;
-	}
-    }
-    POP_MULTICALL;
-    XSRETURN_NO;
-}
-
-MODULE = List::MoreUtils::Impl::Modern		PACKAGE = List::MoreUtils::Impl::Modern
-
-void
-any(block,...)
-    SV *block
-ALIAS:
-    none   = 0
-    all    = 1
-    any    = 2
-    notall = 3
-PROTOTYPE: &@
-PPCODE:
-{
-    int ret_true = !(ix & 2); /* return true at end of loop for none/all; false for any/notall */
-    int invert   =  (ix & 1); /* invert block test for all/notall */
-    GV *gv;
-    HV *stash;
-    SV **args = &PL_stack_base[ax];
-    CV *cv    = sv_2cv(block, &stash, &gv, 0);
-
-    if(cv == Nullcv)
-        croak("Not a subroutine reference");
-
-    SAVESPTR(GvSV(PL_defgv));
-#ifdef dMULTICALL
-    if(!CvISXSUB(cv)) {
-        dMULTICALL;
-        I32 gimme = G_SCALAR;
-        int index;
-
-        PUSH_MULTICALL(cv);
-        for(index = 1; index < items; index++) {
-            GvSV(PL_defgv) = args[index];
-
-            MULTICALL;
-            if(SvTRUEx(*PL_stack_sp) ^ invert) {
-                POP_MULTICALL;
-                ST(0) = ret_true ? &PL_sv_no : &PL_sv_yes;
-                XSRETURN(1);
-            }
-        }
-        POP_MULTICALL;
-    }
-    else
-#endif
-    {
-        int index;
-        for(index = 1; index < items; index++) {
-            dSP;
-            GvSV(PL_defgv) = args[index];
-
-            PUSHMARK(SP);
-            call_sv((SV*)cv, G_SCALAR);
-            if(SvTRUEx(*PL_stack_sp) ^ invert) {
-                ST(0) = ret_true ? &PL_sv_no : &PL_sv_yes;
-                XSRETURN(1);
-            }
-        }
-    }
-
-    ST(0) = ret_true ? &PL_sv_yes : &PL_sv_no;
-    XSRETURN(1);
-}
-
-MODULE = List::MoreUtils		PACKAGE = List::MoreUtils
-
 void
 _XScompiled ()
     CODE:
-	XSRETURN_YES;
-
-#ifndef lengthof
-# define lengthof(x) (sizeof(x)/sizeof((x)[0]))
-#endif
-
-
+       XSRETURN_YES;

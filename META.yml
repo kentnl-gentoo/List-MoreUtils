@@ -30,7 +30,6 @@ recommends:
   perl: v5.18.2
 requires:
   Exporter::Tiny: '0.026'
-  Module::Runtime: '0'
   XSLoader: '0'
   parent: '0'
   perl: '5.008001'
@@ -38,4 +37,4 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils
   homepage: https://metacpan.org/release/List-MoreUtils
   repository: https://github.com/perl5-utils/List-MoreUtils
-version: 0.400_005
+version: 0.400_006
