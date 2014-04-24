@@ -35,4 +35,4 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils
   homepage: https://metacpan.org/release/List-MoreUtils
   repository: https://github.com/perl5-utils/List-MoreUtils
-version: 0.400_007
+version: 0.400_008

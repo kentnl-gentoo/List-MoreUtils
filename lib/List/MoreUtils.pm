@@ -6,15 +6,14 @@ use warnings;
 
 BEGIN
 {
-    our $VERSION = '0.400_007';
+    our $VERSION = '0.400_008';
 }
 
 use Exporter::Tiny qw();
 use List::MoreUtils::XS qw();    # try loading XS
 
-my @functions = (
-    qw(any all none notall
-      any_u all_u none_u notall_u
+my @junctions = qw(any all none notall);
+my @v0_22 = qw(
       true false
       firstidx lastidx
       insert_after insert_after_string
@@ -25,56 +24,62 @@ my @functions = (
       pairwise natatime
       mesh uniq
       minmax part
-      sort_by nsort_by bsearch
-      ),
 );
+my @v0_24  = qw(bsearch);
+my @v0_33  = qw(sort_by nsort_by);
+my @v0_400 = qw(any_u all_u none_u notall_u);
+
+my @all_functions = (@junctions, @v0_22, @v0_24, @v0_33, @v0_400);
 
 my %alias_list = (
-                   first_index => "firstidx",
-                   last_index  => "lastidx",
-                   first_value => "firstval",
-                   last_value  => "lastval",
-                   zip         => "mesh",
-                   distinct    => "uniq",
-                 );
+    v0_22 => {
+        first_index => "firstidx",
+        last_index  => "lastidx",
+        first_value => "firstval",
+        last_value  => "lastval",
+        zip         => "mesh",
+    },
+    v0_33 => {
+        distinct    => "uniq",
+    },
+);
 
 our @ISA = qw(Exporter::Tiny);
-our @EXPORT_OK = ( @functions, keys %alias_list );
+our @EXPORT_OK = ( @all_functions, map { keys %$_ } values %alias_list );
 our %EXPORT_TAGS = (
     all       => \@EXPORT_OK,
     'like_0.22' => [
-	any_u    => { -as => 'any' },
-	all_u    => { -as => 'all' },
-	none_u   => { -as => 'none' },
-	notall_u => { -as => 'notall' },
-	qw(true false firstidx first_index lastidx
-	last_index insert_after insert_after_string apply after after_incl before
-	before_incl indexes firstval first_value lastval last_value each_array
-	each_arrayref pairwise natatime mesh zip uniq minmax part)
+        any_u    => { -as => 'any' },
+        all_u    => { -as => 'all' },
+        none_u   => { -as => 'none' },
+        notall_u => { -as => 'notall' },
+        @v0_22,
+        keys %{$alias_list{v0_22}},
     ],
     'like_0.24' => [
-	any_u    => { -as => 'any' },
-	all_u    => { -as => 'all' },
-	none_u   => { -as => 'none' },
-	notall_u => { -as => 'notall' },
-	qw(true false firstidx first_index lastidx
-	last_index insert_after insert_after_string apply after after_incl before
-	before_incl indexes firstval first_value lastval last_value each_array
-	each_arrayref pairwise natatime mesh zip uniq minmax part bsearch)
+        any_u    => { -as => 'any' },
+        all_u    => { -as => 'all' },
+        notall_u => { -as => 'notall' },
+        'none',
+        @v0_22,
+        @v0_24,
+        keys %{$alias_list{v0_22}},
     ],
     'like_0.33' => [
-	qw(any all none notall
-	true false firstidx first_index lastidx
-	last_index insert_after insert_after_string apply after after_incl before
-	before_incl indexes firstval first_value lastval last_value each_array
-	each_arrayref pairwise natatime mesh zip uniq minmax part
-	sort_by nsort_by)
+        @junctions,
+        @v0_22,
+        # v0_24 functions were omitted
+        @v0_33,
+        keys %{$alias_list{v0_22}},
+        keys %{$alias_list{v0_33}},
     ],
 );
 
-for my $alias (keys %alias_list) {
-    no strict qw(refs);
-    *$alias = __PACKAGE__->can($alias_list{$alias});
+for my $set ( values %alias_list ) {
+    for my $alias (keys %$set) {
+        no strict qw(refs);
+        *$alias = __PACKAGE__->can($set->{$alias});
+    }
 }
 
 =pod
@@ -119,36 +124,51 @@ couldn't be compiled on this machine.
 
 =head1 EXPORTS
 
-Nothing by default. To import all of this module's symbols, do the conventional
+Nothing by default. To import all of this module's symbols use the C<:all> tag.
+Otherwise functions can be imported by name as usual:
 
     use List::MoreUtils ':all';
 
     use List::MoreUtils qw{ any firstidx };
 
-Migrating projects to recent List::MoreUtils is supported by proving imports
-as known stable API versions. If no special requirements are known, skip the
-rest of this chapter.
+Because historical changes to the API might make upgrading List::MoreUtils
+difficult for some projects, the legacy API is available via special import
+tags.
 
-=head2 Last Alias one
+=head2 Version 0.22 (last release with original API)
 
-This API is widely used in several CPAN modules and thus it's closest to
-today's overall one:
-
-    use List::MoreUtils ':like_0.33';
-
-=head2 Last widely used
-
-This API has been available for ages, returning undef for empty lists on
+This API was available from 2006 to 2009, returning undef for empty lists on
 C<all>/C<any>/C<none>/C<notall>:
 
     use List::MoreUtils ':like_0.22';
 
-=head2 Last official one
+This import tag will import all functions available as of version 0.22.
+However, it will import C<any_u> as C<any>, C<all_u> as C<all>, C<none_u> as
+C<none>, and C<notall_u> as C<notall>.
 
-This was the last official API by an authorized maintainer. Unluckly there
-might be projects out there relying on it:
+=head2 Version 0.24 (first incompatible change)
+
+This API was available from 2010 to 2011.  It changed the return value of C<none>
+and added the C<bsearch> function.
 
     use List::MoreUtils ':like_0.24';
+
+This import tag will import all functions available as of version 0.24.
+However it will import C<any_u> as C<any>, C<all_u> as C<all>, and
+C<notall_u> as C<notall>.  It will import C<none> as described in
+the documentation below (true for empty list).
+
+=head2 Version 0.33 (second incompatible change)
+
+This API was available from 2010 to 2014. It is widely used in several CPAN
+modules and thus it's closest to the current API.  It changed the return values
+of C<any>, C<all>, and C<notall>.  It added the C<sort_by> and C<nsort_by> functions
+and the C<distinct> alias for C<uniq>.  It omitted C<bsearch>.
+
+    use List::MoreUtils ':like_0.33';
+
+This import tag will import all functions available as of version 0.33.  Note:
+it will not import C<bsearch> for consistency with the 0.33 API.
 
 =head1 FUNCTIONS
 
@@ -250,9 +270,9 @@ turn:
   print "Not all values are non-negative"
     if notall { $_ >= 0 } ($x, $y, $z);
 
-For an empty LIST, C<not_all> returns false and C<not_all_u> returns C<undef>.
+For an empty LIST, C<notall> returns false and C<notall_u> returns C<undef>.
 
-Thus, C<< not_all_u(@list) >> is equivalent to C<< @list ? not_all(@list) : undef >>.
+Thus, C<< notall_u(@list) >> is equivalent to C<< @list ? notall(@list) : undef >>.
 
 =head2 Transformation
 
@@ -305,12 +325,12 @@ them will modify the input arrays.
 
   @a = (1 .. 5);
   @b = (11 .. 15);
-  @x = pairwise { $a + $b } @a, @b;	# returns 12, 14, 16, 18, 20
+  @x = pairwise { $a + $b } @a, @b;     # returns 12, 14, 16, 18, 20
 
   # mesh with pairwise
   @a = qw/a b c/;
   @b = qw/1 2 3/;
-  @x = pairwise { ($a, $b) } @a, @b;	# returns a, 1, b, 2, c, 3
+  @x = pairwise { ($a, $b) } @a, @b;    # returns a, 1, b, 2, c, 3
 
 =head3 mesh ARRAY1 ARRAY2 [ ARRAY3 ... ]
 
@@ -323,7 +343,7 @@ Examples:
 
   @x = qw/a b c d/;
   @y = qw/1 2 3 4/;
-  @z = mesh @x, @y;	    # returns a, 1, b, 2, c, 3, d, 4
+  @z = mesh @x, @y;         # returns a, 1, b, 2, c, 3, d, 4
 
   @a = ('x');
   @b = ('1', '2');
@@ -381,7 +401,7 @@ reference to an array.
 You can have a sparse list of partitions as well where non-set partitions will
 be undef:
 
-  my @part = part { 2 } 1 .. 10;	    # returns undef, undef, [ 1 .. 10 ]
+  my @part = part { 2 } 1 .. 10;            # returns undef, undef, [ 1 .. 10 ]
 
 Be careful with negative values, though:
 
