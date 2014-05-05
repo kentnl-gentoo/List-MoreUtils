@@ -6,7 +6,7 @@ use warnings;
 
 BEGIN
 {
-    our $VERSION = '0.400_008';
+    our $VERSION = '0.400_009';
 }
 
 use Exporter::Tiny qw();
@@ -124,6 +124,8 @@ couldn't be compiled on this machine.
 
 =head1 EXPORTS
 
+=head2 Default behavior
+
 Nothing by default. To import all of this module's symbols use the C<:all> tag.
 Otherwise functions can be imported by name as usual:
 
@@ -135,7 +137,7 @@ Because historical changes to the API might make upgrading List::MoreUtils
 difficult for some projects, the legacy API is available via special import
 tags.
 
-=head2 Version 0.22 (last release with original API)
+=head2 Like version 0.22 (last release with original API)
 
 This API was available from 2006 to 2009, returning undef for empty lists on
 C<all>/C<any>/C<none>/C<notall>:
@@ -146,7 +148,7 @@ This import tag will import all functions available as of version 0.22.
 However, it will import C<any_u> as C<any>, C<all_u> as C<all>, C<none_u> as
 C<none>, and C<notall_u> as C<notall>.
 
-=head2 Version 0.24 (first incompatible change)
+=head2 Like version 0.24 (first incompatible change)
 
 This API was available from 2010 to 2011.  It changed the return value of C<none>
 and added the C<bsearch> function.
@@ -158,9 +160,9 @@ However it will import C<any_u> as C<any>, C<all_u> as C<all>, and
 C<notall_u> as C<notall>.  It will import C<none> as described in
 the documentation below (true for empty list).
 
-=head2 Version 0.33 (second incompatible change)
+=head2 Like version 0.33 (second incompatible change)
 
-This API was available from 2010 to 2014. It is widely used in several CPAN
+This API was available from 2011 to 2014. It is widely used in several CPAN
 modules and thus it's closest to the current API.  It changed the return values
 of C<any>, C<all>, and C<notall>.  It added the C<sort_by> and C<nsort_by> functions
 and the C<distinct> alias for C<uniq>.  It omitted C<bsearch>.
@@ -602,6 +604,19 @@ there for the test-suite to force testing the Perl implementation, and possibly
 for reporting of bugs. I don't see any reason to use it in a production
 environment.
 
+=head1 MAINTENANCE
+
+The maintenance goal is to preserve the documented semantics of the API;
+bug fixes that bring actual behavior in line with semantics are allowed.
+New API functions may be added over time.  If a backwards incompatible
+change is unavoidable, we will attempt to provide support for the legacy
+API using the same export tag mechanism currently in place.
+
+This module attempts to use few non-core dependencies. Non-core
+configuration and testing modules will be bundled when reasonable;
+run-time dependencies will be added only if they deliver substantial
+benefit.
+
 =head1 BUGS
 
 There is a problem with a bug in 5.6.x perls. It is a syntax error to write
@@ -666,7 +681,7 @@ L<https://github.com/perl5-utils/List-MoreUtils>
 
 If you have a bug report, a patch or a suggestion, please open a new
 report ticket at CPAN (but please check previous reports first in case
-your issue has already been addressed).
+your issue has already been addressed) or open an issue on GitHub.
 
 Report tickets should contain a detailed description of the bug or
 enhancement request and at least an easily verifiable way of
@@ -689,11 +704,16 @@ chosen).
 
 =head2 Business support and maintenance
 
-For business support you can contact Jens via his CPAN email
-address rehsackATcpan.org. Please keep in mind that business
-support is neither available for free nor are you eligible to
-receive any support based on the license distributed with this
-package.
+Generally, in volunteered projects, there is no right for support.
+While every maintainer is happy to improve the provided software,
+spare time is limited.
+
+For those who have a use case which requires guaranteed support, one of
+the maintainers should be hired or contracted.  For business support you
+can contact Jens via his CPAN email address rehsackATcpan.org. Please
+keep in mind that business support is neither available for free nor
+are you eligible to receive any support based on the license distributed
+with this package.
 
 =head1 THANKS
 
@@ -731,9 +751,19 @@ XS-implementation of part() work.
 =head2 Jens Rehsack
 
 Credits goes to all people contributing feedback during the v0.400
-development releases, especially David Golden who spent a lot of effort
-to develop a design to support current state of CPAN as well as ancient
-software somewhere in the dark.
+development releases.
+
+Special thanks goes to David Golden who spent a lot of effort to develop
+a design to support current state of CPAN as well as ancient software
+somewhere in the dark. He also contributed a lot of patches to refactor
+the API frontend to welcome any user of List::MoreUtils - from ancient
+past to recently last used.
+
+Toby Inkster provided a lot of useful feedback for sane importer code
+and was a nice sounding board for API discussions.
+
+Peter Rabbitson provided a sane git repository setup containing entire
+package history.
 
 =head1 TODO
 
@@ -778,9 +808,6 @@ array-reference. Suggested by Mark Summersault.
 =head1 SEE ALSO
 
 L<List::Util>, L<List::AllUtils>, L<List::UtilsBy>
-
-L<List::MoreUtils::ButMaintained::Sanely> for everyone who understand
-"sane" equals to "everything but break my code". Please bug there.
 
 =head1 AUTHOR
 

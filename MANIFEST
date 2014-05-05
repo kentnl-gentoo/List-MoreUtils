@@ -1,6 +1,7 @@
 Changes
 dhash.h
 inc/Config/AutoConf/LMU.pm
+inc/lmu_config_bundle.pm
 inc/Tumble.pm
 lib/List/MoreUtils.pm
 lib/List/MoreUtils/PP.pm
