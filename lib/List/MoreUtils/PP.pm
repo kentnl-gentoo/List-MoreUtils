@@ -1,9 +1,10 @@
 package List::MoreUtils::PP;
 
+use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.400_009';
+our $VERSION = '0.400_010';
 
 =pod
 

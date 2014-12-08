@@ -1,12 +1,12 @@
 package List::MoreUtils;
 
-use 5.008001;
+use 5.006;
 use strict;
 use warnings;
 
 BEGIN
 {
-    our $VERSION = '0.400_009';
+    our $VERSION = '0.400_010';
 }
 
 use Exporter::Tiny qw();

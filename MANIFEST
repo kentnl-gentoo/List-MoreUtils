@@ -1,7 +1,16 @@
 Changes
 dhash.h
 inc/Config/AutoConf/LMU.pm
-inc/lmu_config_bundle.pm
+inc/inc_Capture-Tiny/Capture/Tiny.pm
+inc/inc_Config-AutoConf/Config/AutoConf.pm
+inc/inc_Data-Tumbler/Data/Tumbler.pm
+inc/inc_Module-Pluggable/Devel/InnerPackage.pm
+inc/inc_Module-Pluggable/Module/Pluggable.pm
+inc/inc_Module-Pluggable/Module/Pluggable/Object.pm
+inc/inc_Test-WriteVariants/Test/WriteVariants.pm
+inc/inc_Test-WriteVariants/Test/WriteVariants/Context.pm
+inc/latest.pm
+inc/latest/private.pm
 inc/Tumble.pm
 lib/List/MoreUtils.pm
 lib/List/MoreUtils/PP.pm

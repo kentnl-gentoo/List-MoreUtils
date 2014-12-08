@@ -3,24 +3,27 @@
 use strict;
 use warnings;
 
-require 5.008001;
+require 5.006;
+
+use inc::latest 'Data::Tumbler';
+use inc::latest 'Module::Pluggable';
+use inc::latest 'Test::WriteVariants';
+use inc::latest 'Capture::Tiny';
+use inc::latest 'Config::AutoConf';
+
+if ( inc::latest->can("write") ) {
+  inc::latest->write("inc");
+  for my $mod ( inc::latest->loaded_modules ) {
+      inc::latest->bundle_module($mod, "inc");
+    }
+}
 
 use lib 'inc';
 use ExtUtils::MakeMaker;
 use File::Path;
 
-my $create_bundle;
-
-BEGIN
-{
-    $create_bundle = 0;
-    eval 'use ExtUtils::BundleMaker; $create_bundle = 1;';
-    $create_bundle or do 'inc/lmu_config_bundle.pm';
-}
-
-eval "use Config::AutoConf::LMU ();
-use Tumble;";
-$@ and die $@;
+use Config::AutoConf::LMU ();
+use Tumble;
 
 Config::AutoConf::LMU->_set_argv(@ARGV);    # XXX hack because we cannot construct for global use
 
@@ -34,7 +37,7 @@ my %RUN_DEPS = (
 );
 my %BUNDLE_CONFIGURE_DEPS = (
     'Test::WriteVariants' => '0.005',
-    'Config::AutoConf'    => '0.26',
+    'Config::AutoConf'    => '0.306',
 );
 my %CONFIGURE_DEPS = (
     'Carp'                => 0,
@@ -50,22 +53,6 @@ my %TEST_DEPS = (
 );
 my @XS_FILES = qw(MoreUtils.xs);
 
-if ($create_bundle)
-{
-    my $eu_bm = ExtUtils::BundleMaker->new(
-        modules => {%BUNDLE_CONFIGURE_DEPS},
-        target  => 'inc/lmu_config_bundle.pm',
-        recurse => 'v5.14',
-        name    => 'lmu_config_bundle',
-    );
-    $eu_bm->make_bundle();
-    %CONFIGURE_DEPS = ( %CONFIGURE_DEPS, %{ $eu_bm->_remaining_deps }, );
-}
-else
-{
-    %CONFIGURE_DEPS = ( %CONFIGURE_DEPS, %{ lmu_config_bundle->remaining_deps }, );
-}
-
 WriteMakefile1(
     META_MERGE => {
         'meta-spec' => { version => 2 },
@@ -80,16 +67,20 @@ WriteMakefile1(
                 web    => 'http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils',
                 mailto => 'list-moreutils@rt.cpan.org',
             },
+            license => 'http://dev.perl.org/licenses/',
         },
         prereqs => {
             develop => {
                 requires => {
-                    'ExtUtils::BundleMaker'               => '0.006',
-                    'Test::CPAN::Changes'                 => 0,
+                    'inc::latest'                         => '0.500',
+		    'Test::CPAN::Changes'                 => 0,
                     'Test::CheckManifest'                 => 0,
+                    'Module::CPANTS::Analyse'             => '0.96',
+                    'Test::Kwalitee'                      => 0,
                     'Test::Pod'                           => 0,
                     'Test::Pod::Coverage'                 => 0,
                     'Test::Pod::Spelling::CommonMistakes' => 0,
+                    'Test::Spelling'                      => 0,
                 },
             },
             configure => {
@@ -119,7 +110,7 @@ WriteMakefile1(
     ],
     LICENSE => 'perl',
     (
-        Config::AutoConf::LMU->with_xs
+        Config::AutoConf::LMU->check_produce_loadable_xs_build
         ? (
             XS => { map { ( my $tgt = $_ ) =~ s/\.xs$/\.c/; $_ => $tgt; } @XS_FILES },
             MAGICXS => 1,
@@ -129,6 +120,7 @@ WriteMakefile1(
           )
         : ()
     ),
+    clean => { FILES => "inc/latest* inc/inc_*" },
     depend => { '$(FIRST_MAKEFILE)' => '$(VERSION_FROM)' },
     test   => { TESTS               => 'xt/*.t gt/*/*.t gt/*/*/*.t' },
     # Otherwise 'cxinc' isn't defined
@@ -142,23 +134,14 @@ sub WriteMakefile1
     $eumm_version = eval $eumm_version;
     die "EXTRA_META is deprecated" if ( exists( $params{EXTRA_META} ) );
     die "License not specified"    if ( !exists( $params{LICENSE} ) );
-    if ( $params{TEST_REQUIRES} and ( $eumm_version < 6.6303 ) )
-    {
-        if ( $params{BUILD_REQUIRES} )
-        {
-            $params{BUILD_REQUIRES} = { %{ $params{BUILD_REQUIRES} }, %{ $params{TEST_REQUIRES} } };
-        }
-        else
-        {
-            $params{BUILD_REQUIRES} = delete $params{TEST_REQUIRES};
-        }
-    }
-    if ( $params{BUILD_REQUIRES} and ( $eumm_version < 6.5503 ) )
-    {
-        #EUMM 6.5502 has problems with BUILD_REQUIRES
-        $params{PREREQ_PM} = { %{ $params{PREREQ_PM} || {} }, %{ $params{BUILD_REQUIRES} } };
-        delete $params{BUILD_REQUIRES};
-    }
+    $params{TEST_REQUIRES}
+      and $eumm_version < 6.6303
+      and $params{BUILD_REQUIRES} =
+      $params{BUILD_REQUIRES} ? { %{ $params{BUILD_REQUIRES} }, %{ $params{TEST_REQUIRES} } } : delete $params{TEST_REQUIRES};
+    #EUMM 6.5502 has problems with BUILD_REQUIRES
+    $params{BUILD_REQUIRES}
+      and $eumm_version < 6.5503
+      and $params{PREREQ_PM} = { %{ $params{PREREQ_PM} || {} }, %{ delete $params{BUILD_REQUIRES} } };
     delete $params{CONFIGURE_REQUIRES}    if ( $eumm_version < 6.52 );
     delete $params{MIN_PERL_VERSION}      if ( $eumm_version < 6.48 );
     delete $params{META_MERGE}            if ( $eumm_version < 6.46 );
