@@ -34,4 +34,4 @@ resources:
   homepage: https://metacpan.org/release/List-MoreUtils
   license: http://dev.perl.org/licenses/
   repository: https://github.com/perl5-utils/List-MoreUtils
-version: 0.400_010
+version: '0.401'
