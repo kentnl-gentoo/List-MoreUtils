@@ -1,87 +1,12 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include "multicall.h"
 #include "ppport.h"
-
-#ifndef PERL_VERSION
-#    include <patchlevel.h>
-#    if !(defined(PERL_VERSION) || (SUBVERSION > 0 && defined(PATCHLEVEL)))
-#        include <could_not_find_Perl_patchlevel.h>
-#    endif
-#    define PERL_REVISION	5
-#    define PERL_VERSION	PATCHLEVEL
-#    define PERL_SUBVERSION	SUBVERSION
-#endif
 
 #ifndef aTHX
 #  define aTHX
 #  define pTHX
-#endif
-
-/* multicall.h is all nice and
- * fine but wont work on perl < 5.6.0 */
-
-#if PERL_VERSION > 5
-#   include "multicall.h"
-#else
-#   define dMULTICALL						\
-	OP *_op;						\
-	PERL_CONTEXT *cx;					\
-	SV **newsp;						\
-	U8 hasargs = 0;						\
-	bool oldcatch = CATCH_GET
-#   define PUSH_MULTICALL(cv)					\
-	_op = CvSTART(cv);					\
-	SAVESPTR(CvROOT(cv)->op_ppaddr);			\
-	CvROOT(cv)->op_ppaddr = PL_ppaddr[OP_NULL];		\
-	SAVESPTR(PL_curpad);					\
-	PL_curpad = AvARRAY((AV*)AvARRAY(CvPADLIST(cv))[1]);	\
-	SAVETMPS;						\
-	SAVESPTR(PL_op);					\
-	CATCH_SET(TRUE);					\
-	PUSHBLOCK(cx, CXt_SUB, SP);				\
-	PUSHSUB(cx)
-#   define MULTICALL						\
-	PL_op = _op;						\
-	CALLRUNOPS()
-#   define POP_MULTICALL					\
-	POPBLOCK(cx,PL_curpm);					\
-	CATCH_SET(oldcatch);					\
-	SPAGAIN
-#endif
-
-#ifndef CvISXSUB
-#  define CvISXSUB(cv) CvXSUB(cv)
-#endif
-
-/* Some platforms have strict exports. And before 5.7.3 cxinc (or Perl_cxinc)
-   was not exported. Therefore platforms like win32, VMS etc have problems
-   so we redefine it here -- GMB
-*/
-#if PERL_VERSION < 7
-/* Not in 5.6.1. */
-#  define SvUOK(sv)           SvIOK_UV(sv)
-#  ifdef cxinc
-#    undef cxinc
-#  endif
-#  define cxinc() my_cxinc(aTHX)
-static I32
-my_cxinc(pTHX)
-{
-    cxstack_max = cxstack_max * 3 / 2;
-    Renew(cxstack, cxstack_max + 1, struct context);      /* XXX should fix CXINC macro */
-    return cxstack_ix + 1;
-}
-#endif
-
-#if PERL_VERSION < 6
-#    define NV double
-#    define LEAVESUB(cv)	    \
-	{			    \
-	    if (cv)		{   \
-		SvREFCNT_dec(cv);   \
-	    }			    \
-	}
 #endif
 
 #ifdef SVf_IVisUV
@@ -1567,7 +1492,7 @@ uniq (...)
 	sv_2mortal(newRV_noinc((SV*)hv));
 
 	/* don't build return list in scalar context */
-	if (GIMME == G_SCALAR) {
+	if (GIMME_V == G_SCALAR) {
 	    for (i = 0; i < items; i++) {
 		if (!hv_exists_ent(hv, ST(i), 0)) {
 		    count++;
@@ -1789,8 +1714,8 @@ CODE:
     dMULTICALL;
     HV *stash;
     GV *gv;
-    I32 gimme = GIMME; /* perl-5.5.4 bus-errors out later when using GIMME
-                          therefore we save its value in a fresh variable */
+    I32 gimme = GIMME_V; /* perl-5.5.4 bus-errors out later when using GIMME
+                            therefore we save its value in a fresh variable */
     SV **args = &PL_stack_base[ax];
 
     long i, j;
@@ -1818,8 +1743,9 @@ CODE:
 
             if (val == 0) {
                 POP_MULTICALL;
-                if (gimme == G_SCALAR)
+                if (gimme != G_ARRAY) {
                     XSRETURN_YES;
+		}
                 SvREFCNT_inc(RETVAL = args[1+k]);
                 goto yes;
             }

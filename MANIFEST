@@ -4,6 +4,9 @@ inc/Config/AutoConf/LMU.pm
 inc/inc_Capture-Tiny/Capture/Tiny.pm
 inc/inc_Config-AutoConf/Config/AutoConf.pm
 inc/inc_Data-Tumbler/Data/Tumbler.pm
+inc/inc_JSON-PP/JSON/PP.pm
+inc/inc_JSON-PP/JSON/PP/Boolean.pm
+inc/inc_JSON-PP/JSON/PP/Compat5006.pm
 inc/inc_Module-Pluggable/Devel/InnerPackage.pm
 inc/inc_Module-Pluggable/Module/Pluggable.pm
 inc/inc_Module-Pluggable/Module/Pluggable/Object.pm
