@@ -92,7 +92,7 @@ Config::AutoConf - A module to implement some of AutoConf macros in pure perl.
 
 =cut
 
-our $VERSION = '0.308';
+our $VERSION = '0.309';
 $VERSION = eval $VERSION;
 
 =head1 ABSTRACT
@@ -3328,16 +3328,7 @@ sub _get_builder
     ref $self->{lang_supported}->{ $self->{lang} } eq "CODE" and $self->{lang_supported}->{ $self->{lang} }->($self);
     defined( $self->{lang_supported}->{ $self->{lang} } ) or croak( "Unsupported compile language \"" . $self->{lang} . "\"" );
 
-    my $builder = $self->{lang_supported}->{ $self->{lang} }->new();
-
-    ## XXX - Temporarily. Will try to send upstream
-    if ( $self->{lang} eq "C" )
-    {
-        $builder->{config}{ccflags} =~ s/-arch \S+//g;
-        $builder->{config}{lddlflags} =~ s/-arch \S+//g;
-        $builder->{config}{ldflags} =~ s/-arch \S+//g;
-    }
-    $builder;
+    $self->{lang_supported}->{ $self->{lang} }->new();
 }
 
 sub _set_language

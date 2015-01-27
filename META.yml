@@ -27,8 +27,6 @@ no_index:
   directory:
     - t
     - inc
-recommends:
-  perl: v5.20.1
 requires:
   Exporter::Tiny: '0.038'
   XSLoader: '0'
@@ -37,4 +35,4 @@ resources:
   homepage: https://metacpan.org/release/List-MoreUtils
   license: http://dev.perl.org/licenses/
   repository: https://github.com/perl5-utils/List-MoreUtils
-version: '0.402'
+version: '0.403'
