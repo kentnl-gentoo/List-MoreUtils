@@ -122,7 +122,7 @@ my %CONFIGURE_DEPS = (
 my %BUILD_DEPS = ();
 
 my %TEST_DEPS = (
-    'Test::More' => 0.90,
+    'Test::More' => 0.96,
 );
 my @XS_FILES = qw(MoreUtils.xs);
 
@@ -132,13 +132,13 @@ WriteMakefile1(
         resources   => {
             homepage   => 'https://metacpan.org/release/List-MoreUtils',
             repository => {
-                url  => 'git@github.com:perl5-utils/List-MoreUtils.git',
+                url  => 'https://github.com/perl5-utils/List-MoreUtils.git',
                 web  => 'https://github.com/perl5-utils/List-MoreUtils',
                 type => 'git',
             },
             bugtracker => {
                 web    => 'http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils',
-                mailto => 'list-moreutils@rt.cpan.org',
+                mailto => 'bug-List-MoreUtils@rt.cpan.org',
             },
             license => 'http://dev.perl.org/licenses/',
         },
@@ -178,7 +178,10 @@ WriteMakefile1(
         'Adam Kennedy <adamk@cpan.org>',
         'Jens Rehsack <rehsack@cpan.org>'
     ],
-    LICENSE => 'perl',
+    LICENSE        => 'perl',
+    PREREQ_PM      => \%RUN_DEPS,
+    BUILD_REQUIRES => \%BUILD_DEPS,
+    TEST_REQUIRES  => \%TEST_DEPS,
     (
         Config::AutoConf::LMU->check_produce_loadable_xs_build
         ? (
@@ -206,8 +209,7 @@ sub WriteMakefile1
     die "License not specified"    if ( !exists( $params{LICENSE} ) );
     $params{TEST_REQUIRES}
       and $eumm_version < 6.6303
-      and $params{BUILD_REQUIRES} =
-      $params{BUILD_REQUIRES} ? { %{ $params{BUILD_REQUIRES} }, %{ $params{TEST_REQUIRES} } } : delete $params{TEST_REQUIRES};
+      and $params{BUILD_REQUIRES} = { %{ $params{BUILD_REQUIRES} || {} }, %{ delete $params{TEST_REQUIRES} } };
     #EUMM 6.5502 has problems with BUILD_REQUIRES
     $params{BUILD_REQUIRES}
       and $eumm_version < 6.5503

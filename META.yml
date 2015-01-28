@@ -5,8 +5,7 @@ author:
   - 'Adam Kennedy <adamk@cpan.org>'
   - 'Jens Rehsack <rehsack@cpan.org>'
 build_requires:
-  ExtUtils::MakeMaker: '0'
-  Test::More: '0.9'
+  Test::More: '0.96'
 configure_requires:
   Carp: '0'
   ExtUtils::MakeMaker: '6.86'
@@ -34,5 +33,5 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=List-MoreUtils
   homepage: https://metacpan.org/release/List-MoreUtils
   license: http://dev.perl.org/licenses/
-  repository: https://github.com/perl5-utils/List-MoreUtils
-version: '0.403'
+  repository: https://github.com/perl5-utils/List-MoreUtils.git
+version: '0.404'
