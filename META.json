@@ -34,7 +34,7 @@
          },
          "requires" : {
             "Carp" : "0",
-            "ExtUtils::MakeMaker" : "6.86",
+            "ExtUtils::MakeMaker" : "0",
             "File::Basename" : "0",
             "File::Copy" : "0",
             "File::Path" : "0",
@@ -90,5 +90,5 @@
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.404"
+   "version" : "0.405"
 }

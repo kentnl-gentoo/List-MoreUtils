@@ -8,7 +8,7 @@ build_requires:
   Test::More: '0.96'
 configure_requires:
   Carp: '0'
-  ExtUtils::MakeMaker: '6.86'
+  ExtUtils::MakeMaker: '0'
   File::Basename: '0'
   File::Copy: '0'
   File::Path: '0'
@@ -34,4 +34,4 @@ resources:
   homepage: https://metacpan.org/release/List-MoreUtils
   license: http://dev.perl.org/licenses/
   repository: https://github.com/perl5-utils/List-MoreUtils.git
-version: '0.404'
+version: '0.405'
