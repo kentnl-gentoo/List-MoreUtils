@@ -92,7 +92,7 @@ Config::AutoConf - A module to implement some of AutoConf macros in pure perl.
 
 =cut
 
-our $VERSION = '0.309';
+our $VERSION = '0.310';
 $VERSION = eval $VERSION;
 
 =head1 ABSTRACT
@@ -119,6 +119,21 @@ macros do. To detect a command, to detect a library, etc.
 
     Config::AutoConf->check_file("/etc/passwd"); # -f && -r
 
+=head1 DESCRIPTION
+
+Config::AutoConf is intended to provide the same opportunities to Perl
+developers as L<GNU Autoconf|http://www.gnu.org/software/autoconf/>
+does for Shell developers.
+
+As Perl is the second most deployed language (mind: every Unix comes
+with Perl, several mini-computers have Perl and even lot's of Windows
+machines run Perl software - which requires deployed Perl there, too),
+this gives wider support than Shell based probes.
+
+The API is leant against GNU Autoconf, but we try to make the API
+(especially optional arguments) more Perl'ish than m4 abilities allow
+to the original.
+
 =head1 FUNCTIONS
 
 =cut
@@ -128,7 +143,7 @@ my $glob_instance;
 =head2 new
 
 This function instantiates a new instance of Config::AutoConf, eg. to
-configure child components. The contructor adds also values set via
+configure child components. The constructor adds also values set via
 environment variable C<PERL5_AUTOCONF_OPTS>.
 
 =cut
@@ -572,7 +587,7 @@ sub check_prog_cc
 
 =head2 check_cc
 
-(Depreciated) Old name of L</check_prog_cc>.
+(Deprecated) Old name of L</check_prog_cc>.
 
 =cut
 
@@ -1037,7 +1052,7 @@ sub push_link_flags
 
 =head2 compile_if_else( $src, \%options? )
 
-This function trys to compile specified code and returns a boolean value
+This function tries to compile specified code and returns a boolean value
 containing check success state.
 
 If the very last parameter contains a hash reference, C<CODE> references
@@ -1106,7 +1121,7 @@ sub compile_if_else
 
 =head2 link_if_else( $src, \%options? )
 
-This function trys to compile and link specified code and returns a boolean
+This function tries to compile and link specified code and returns a boolean
 value containing check success state.
 
 If the very last parameter contains a hash reference, C<CODE> references
@@ -1246,7 +1261,7 @@ sub check_cached
 
 =head2 cache_val
 
-This functions returns the value of a previously check_cached call.
+This function returns the value of a previously check_cached call.
 
 =cut
 
@@ -2502,7 +2517,7 @@ the C<NAMLEN> macro.
 
 This method might be obsolescent, as all current systems with directory
 libraries have C<<E<lt>dirent.hE<gt>>>. Programs supporting only newer OS
-might not need touse this method.
+might not need to use this method.
 
 If the very last parameter contains a hash reference, C<CODE> references
 to I<action_on_true> or I<action_on_false> are executed, respectively.
@@ -3136,7 +3151,7 @@ sub pkg_config_package_flags
 
 This method proves the C<_argv> attribute and (when set) the C<PERL_MM_OPT>
 whether they contain I<PUREPERL_ONLY=(0|1)> or not. The attribute C<_force_xs>
-is set appropriate, which allows a compile test to bail out when C<Makefile.PL>
+is set as appropriate, which allows a compile test to bail out when C<Makefile.PL>
 is called with I<PUREPERL_ONLY=0>.
 
 =cut
@@ -3585,8 +3600,8 @@ sub add_log_fh
 
 =head2 delete_log_fh
 
-Removes specified log file handles. This method allows you to shoot you
-in your foot - it doesn't prove whether the primary nor the last handle
+Removes specified log file handles. This method allows you to shoot
+yourself in the foot - it doesn't prove whether the primary nor the last handle
 is removed. Use with caution.
 
 =cut
@@ -3638,8 +3653,8 @@ Jens Rehsack, C<< <rehsack@cpan.org> >>
 
 =head1 NEXT STEPS
 
-Although a lot of work needs to be done, this is the next steps I
-intent to take.
+Although a lot of work needs to be done, these are the next steps I
+intend to take.
 
   - detect flex/lex
   - detect yacc/bison/byacc
@@ -3657,9 +3672,38 @@ addressed later, or by request.
 A lot. Portability is a pain. B<<Patches welcome!>>.
 
 Please report any bugs or feature requests to
-C<bug-extutils-autoconf@rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org>.  I will be notified, and then you'll automatically
-be notified of progress on your bug as I make changes.
+C<bug-Config-AutoConf@rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Config-AutoConf>.  We will
+be notified, and then you'll automatically be notified of progress
+on your bug as we make changes.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc Config::AutoConf
+
+You can also look for information at:
+
+=over 4
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Config-AutoConf>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/l/Config-AutoConf>
+
+=item * MetaCPAN
+
+L<https://metacpan.org/release/Config-AutoConf>
+
+=item * Git Repository
+
+L<https://github.com/ambs/Config-AutoConf>
+
+=back
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -3667,9 +3711,11 @@ Michael Schwern for kind MacOS X help.
 
 Ken Williams for ExtUtils::CBuilder
 
+Peter Rabbitson for help on refactoring and making the API more Perl'ish
+
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2004-2011 by the Authors
+Copyright 2004-2015 by the Authors
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

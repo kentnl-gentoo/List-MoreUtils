@@ -3,7 +3,7 @@ use strict;
 use warnings;
 package Capture::Tiny;
 # ABSTRACT: Capture STDOUT and STDERR from Perl, XS or external programs
-our $VERSION = '0.27';
+our $VERSION = '0.28';
 use Carp ();
 use Exporter ();
 use IO::Handle ();
@@ -369,6 +369,8 @@ sub _capture_tee {
     eval { @result = $code->(); $inner_error = $@ };
     $exit_code = $?; # save this for later
     $outer_error = $@; # save this for later
+    STDOUT->flush if $do_stdout;
+    STDERR->flush if $do_stderr;
   }
   # restore prior filehandles and shut down tees
   # _debug( "# restoring filehandles ...\n" );
@@ -420,7 +422,7 @@ Capture::Tiny - Capture STDOUT and STDERR from Perl, XS or external programs
 
 =head1 VERSION
 
-version 0.27
+version 0.28
 
 =head1 SYNOPSIS
 
@@ -694,11 +696,14 @@ Perl 5.6 predates PerlIO.  UTF-8 data may not be captured correctly.
 
 =head2 PERL_CAPTURE_TINY_TIMEOUT
 
-Capture::Tiny uses subprocesses for C<<< tee >>>.  By default, Capture::Tiny will
-timeout with an error if the subprocesses are not ready to receive data within
-30 seconds (or whatever is the value of C<<< $Capture::Tiny::TIMEOUT >>>).  An
-alternate timeout may be specified by setting the C<<< PERL_CAPTURE_TINY_TIMEOUT >>>
-environment variable.  Setting it to zero will disable timeouts.
+Capture::Tiny uses subprocesses internally for C<<< tee >>>.  By default,
+Capture::Tiny will timeout with an error if such subprocesses are not ready to
+receive data within 30 seconds (or whatever is the value of
+C<<< $Capture::Tiny::TIMEOUT >>>).  An alternate timeout may be specified by setting
+the C<<< PERL_CAPTURE_TINY_TIMEOUT >>> environment variable.  Setting it to zero will
+disable timeouts.  BE<lt>NOTEE<gt>, this does not timeout the code reference being
+captured -- this only prevents Capture::Tiny itself from hanging your process
+waiting for its child processes to be ready to proceed.
 
 =head1 SEE ALSO
 

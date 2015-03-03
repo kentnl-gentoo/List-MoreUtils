@@ -23,7 +23,7 @@ MANIFEST
 MoreUtils.xs
 multicall.h
 ppport.h
-README
+README.md
 t/lib/LMU/Test/ab.pm
 t/lib/LMU/Test/Functions.pm
 t/lib/LMU/Test/Import.pm

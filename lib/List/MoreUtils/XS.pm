@@ -8,7 +8,7 @@ use vars qw{$VERSION @ISA};
 
 BEGIN
 {
-    $VERSION  = '0.405';
+    $VERSION  = '0.406';
 
     # Load the XS at compile-time so that redefinition warnings will be
     # thrown correctly if the XS versions of part or indexes loaded
@@ -34,6 +34,7 @@ EOLDR
            apply indexes after after_incl before before_incl
            firstval lastval each_array each_arrayref pairwise
 	   natatime mesh uniq minmax part bsearch
+	   firstres lastres
 	   sort_by nsort_by _XScompiled);
     my $pp_stuff = join( "\n", "use List::MoreUtils::PP;", "package List::MoreUtils;", @pp_imp );
     eval $pp_stuff;
