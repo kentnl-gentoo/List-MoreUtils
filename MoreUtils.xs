@@ -103,6 +103,62 @@ ncmp(SV* left, SV * right)
     }
 }
 
+#define FUNC_NAME GvNAME(GvEGV(ST(items)))
+
+/* shameless stolen from PadWalker */
+#ifndef PadARRAY
+typedef AV PADNAMELIST;
+typedef SV PADNAME;
+# if PERL_VERSION < 8 || (PERL_VERSION == 8 && !PERL_SUBVERSION)
+typedef AV PADLIST;
+typedef AV PAD;
+# endif
+# define PadlistARRAY(pl)       ((PAD **)AvARRAY(pl))
+# define PadlistMAX(pl)         AvFILLp(pl)
+# define PadlistNAMES(pl)       (*PadlistARRAY(pl))
+# define PadnamelistARRAY(pnl)  ((PADNAME **)AvARRAY(pnl))
+# define PadnamelistMAX(pnl)    AvFILLp(pnl)
+# define PadARRAY               AvARRAY
+# define PadnameIsOUR(pn)       !!(SvFLAGS(pn) & SVpad_OUR)
+# define PadnameOURSTASH(pn)    SvOURSTASH(pn)
+# define PadnameOUTER(pn)       !!SvFAKE(pn)
+# define PadnamePV(pn)          (SvPOKp(pn) ? SvPVX(pn) : NULL)
+#endif
+
+static int 
+in_pad (SV *code)
+{
+    GV *gv;
+    HV *stash;
+    CV *cv = sv_2cv(code, &stash, &gv, 0);
+    PADLIST *pad_list = (CvPADLIST(cv));
+    PADNAMELIST *pad_namelist = PadlistNAMES(pad_list);
+    PADNAME **pad_names = PadnamelistARRAY(pad_namelist);
+    int i;
+
+    for (i=PadnamelistMAX(pad_namelist); i>=0; --i) {
+	PADNAME* name_sv = PadnamelistARRAY(pad_namelist)[i];
+	if (name_sv) {
+	    char *name_str = PadnamePV(name_sv);
+	    if (name_str) {
+
+		/* perl < 5.6.0 does not yet have our */
+#               ifdef SVpad_OUR
+		if(PadnameIsOUR(name_sv))
+		    continue;
+#               endif
+
+		if (!SvOK(name_sv))
+		    continue;
+
+		if (strEQ(name_str, "$a") || strEQ(name_str, "$b"))
+		    return 1;
+	    }
+	}
+    }
+    return 0;
+}
+
 #define WARN_OFF \
     SV *oldwarn = PL_curcop->cop_warnings; \
     PL_curcop->cop_warnings = pWARN_NONE;
@@ -137,6 +193,38 @@ ncmp(SV* left, SV * right)
 	/* in order to allow proper cleanup in DESTROY-handler */			\
 	sv_bless(RETVAL, stash)
 
+
+#define FOR_EACH(on_item)			\
+    if(!codelike(code))				\
+       croak_xs_usage(cv,  "code, ...");	\
+						\
+    if (items > 1) {				\
+        dMULTICALL;				\
+        int i;					\
+        HV *stash;				\
+        GV *gv;					\
+        CV *_cv;				\
+        SV **args = &PL_stack_base[ax];		\
+        I32 gimme = G_SCALAR;			\
+        _cv = sv_2cv(code, &stash, &gv, 0);	\
+        PUSH_MULTICALL(_cv);			\
+        SAVESPTR(GvSV(PL_defgv));		\
+						\
+        for(i = 1 ; i < items ; ++i) {		\
+            GvSV(PL_defgv) = args[i];		\
+            MULTICALL;				\
+	    on_item;				\
+        }					\
+        POP_MULTICALL;				\
+    }
+
+#define TRUE_JUNCTION(on_empty, on_true)	\
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) on_true; })) \
+    else on_empty;
+
+#define FALSE_JUNCTION(on_empty, on_false)	\
+    FOR_EACH(({if (!SvTRUE(*PL_stack_sp)) on_false; })) \
+    else on_empty;
 
 /* #include "dhash.h" */
 
@@ -273,33 +361,7 @@ any (code,...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    GV *gv;
-    HV *stash;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_NO;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_YES;
-	}
-    }
-    POP_MULTICALL;
+    TRUE_JUNCTION(XSRETURN_NO, ({ POP_MULTICALL; XSRETURN_YES; }));
     XSRETURN_NO;
 }
 
@@ -309,33 +371,7 @@ all (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_YES;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; i++) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_NO;
-	}
-    }
-    POP_MULTICALL;
+    FALSE_JUNCTION(XSRETURN_YES, ({ POP_MULTICALL; XSRETURN_NO; }));
     XSRETURN_YES;
 }
 
@@ -346,33 +382,7 @@ none (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_YES;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_NO;
-	}
-    }
-    POP_MULTICALL;
+    TRUE_JUNCTION(XSRETURN_YES, ({ POP_MULTICALL; XSRETURN_NO; }));
     XSRETURN_YES;
 }
 
@@ -382,33 +392,20 @@ notall (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
+    FALSE_JUNCTION(XSRETURN_NO, ({ POP_MULTICALL; XSRETURN_YES; }));
+    XSRETURN_NO;
+}
 
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_NO;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_YES;
-	}
-    }
-    POP_MULTICALL;
+void
+one (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    int found = 0;
+    TRUE_JUNCTION(XSRETURN_NO, ({ if (found++) { POP_MULTICALL; XSRETURN_NO; }; }));
+    if (found)
+        XSRETURN_YES;
     XSRETURN_NO;
 }
 
@@ -418,33 +415,7 @@ any_u (code,...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    GV *gv;
-    HV *stash;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_UNDEF;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_YES;
-	}
-    }
-    POP_MULTICALL;
+    TRUE_JUNCTION(XSRETURN_UNDEF, ({ POP_MULTICALL; XSRETURN_YES; }));
     XSRETURN_NO;
 }
 
@@ -454,33 +425,7 @@ all_u (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_UNDEF;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; i++) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_NO;
-	}
-    }
-    POP_MULTICALL;
+    FALSE_JUNCTION(XSRETURN_UNDEF, ({ POP_MULTICALL; XSRETURN_NO; }));
     XSRETURN_YES;
 }
 
@@ -491,33 +436,7 @@ none_u (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_UNDEF;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_NO;
-	}
-    }
-    POP_MULTICALL;
+    TRUE_JUNCTION(XSRETURN_UNDEF, ({ POP_MULTICALL; XSRETURN_NO; }));
     XSRETURN_YES;
 }
 
@@ -527,33 +446,20 @@ notall_u (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
+    FALSE_JUNCTION(XSRETURN_UNDEF, ({ POP_MULTICALL; XSRETURN_YES; }));
+    XSRETURN_NO;
+}
 
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	XSRETURN_UNDEF;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp)) {
-	    POP_MULTICALL;
-	    XSRETURN_YES;
-	}
-    }
-    POP_MULTICALL;
+void
+one_u (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    int found = 0;
+    TRUE_JUNCTION(XSRETURN_UNDEF, ({ if (found++) { POP_MULTICALL; XSRETURN_NO; }; }));
+    if (found)
+        XSRETURN_YES;
     XSRETURN_NO;
 }
 
@@ -563,34 +469,8 @@ true (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
     I32 count = 0;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	goto done;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (SvTRUE(*PL_stack_sp))
-	    count++;
-    }
-    POP_MULTICALL;
-
-    done:
+    FOR_EACH(({ if (SvTRUE(*PL_stack_sp)) count++; }));
     RETVAL = count;
 }
 OUTPUT:
@@ -602,34 +482,8 @@ false (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
     I32 count = 0;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items <= 1)
-	goto done;
-
-    _cv = sv_2cv(code, &stash, &gv, 0);
-    PUSH_MULTICALL(_cv);
-    SAVESPTR(GvSV(PL_defgv));
-
-    for(i = 1 ; i < items ; ++i) {
-	GvSV(PL_defgv) = args[i];
-	MULTICALL;
-	if (!SvTRUE(*PL_stack_sp))
-	    count++;
-    }
-    POP_MULTICALL;
-
-    done:
+    FOR_EACH(({ if (!SvTRUE(*PL_stack_sp)) count++; }));
     RETVAL = count;
 }
 OUTPUT:
@@ -641,34 +495,71 @@ firstidx (code, ...)
 PROTOTYPE: &@
 CODE:
 {
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
     RETVAL = -1;
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) { RETVAL = i-1; break; }}));
+}
+OUTPUT:
+    RETVAL
 
-    if (items > 1) {
-	_cv = sv_2cv(code, &stash, &gv, 0);
-	PUSH_MULTICALL(_cv);
-	SAVESPTR(GvSV(PL_defgv));
+SV *
+firstval (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    RETVAL = &PL_sv_undef;
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) { SvREFCNT_inc(RETVAL = args[i]); break; }}));
+}
+OUTPUT:
+    RETVAL
 
-	for (i = 1 ; i < items ; ++i) {
-	    GvSV(PL_defgv) = args[i];
-	    MULTICALL;
-	    if (SvTRUE(*PL_stack_sp)) {
-		RETVAL = i-1;
-		break;
-	    }
-	}
-	POP_MULTICALL;
-    }
+SV *
+firstres (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    RETVAL = &PL_sv_undef;
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) { SvREFCNT_inc(RETVAL = *PL_stack_sp); break; }}));
+}
+OUTPUT:
+    RETVAL
+
+int
+onlyidx (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    int found = 0;
+    RETVAL = -1;
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) { if (found++) {RETVAL = -1; break;} RETVAL = i-1; }}));
+}
+OUTPUT:
+    RETVAL
+
+SV *
+onlyval (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    int found = 0;
+    RETVAL = &PL_sv_undef;
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) { if (found++) {SvREFCNT_dec(RETVAL); RETVAL = &PL_sv_undef; break;} SvREFCNT_inc(RETVAL = args[i]); }}));
+}
+OUTPUT:
+    RETVAL
+
+SV *
+onlyres (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    int found = 0;
+    RETVAL = &PL_sv_undef;
+    FOR_EACH(({if (SvTRUE(*PL_stack_sp)) { if (found++) {SvREFCNT_dec(RETVAL); RETVAL = &PL_sv_undef; break;}SvREFCNT_inc(RETVAL = *PL_stack_sp); }}));
 }
 OUTPUT:
     RETVAL
@@ -702,6 +593,84 @@ CODE:
 	    MULTICALL;
 	    if (SvTRUE(*PL_stack_sp)) {
 		RETVAL = i-1;
+		break;
+	    }
+	}
+	POP_MULTICALL;
+    }
+}
+OUTPUT:
+    RETVAL
+
+SV *
+lastval (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *_cv;
+
+    RETVAL = &PL_sv_undef;
+
+    if(!codelike(code))
+       croak_xs_usage(cv,  "code, ...");
+
+    if (items > 1) {
+	_cv = sv_2cv(code, &stash, &gv, 0);
+	PUSH_MULTICALL(_cv);
+	SAVESPTR(GvSV(PL_defgv));
+
+	for (i = items-1 ; i > 0 ; --i) {
+	    GvSV(PL_defgv) = args[i];
+	    MULTICALL;
+	    if (SvTRUE(*PL_stack_sp)) {
+		/* see comment in indexes() */
+		SvREFCNT_inc(RETVAL = args[i]);
+		break;
+	    }
+	}
+	POP_MULTICALL;
+    }
+}
+OUTPUT:
+    RETVAL
+
+SV *
+lastres (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    int i;
+    HV *stash;
+    GV *gv;
+    I32 gimme = G_SCALAR;
+    SV **args = &PL_stack_base[ax];
+    CV *_cv;
+
+    RETVAL = &PL_sv_undef;
+
+    if(!codelike(code))
+       croak_xs_usage(cv,  "code, ...");
+
+    if (items > 1) {
+	_cv = sv_2cv(code, &stash, &gv, 0);
+	PUSH_MULTICALL(_cv);
+	SAVESPTR(GvSV(PL_defgv));
+
+	for (i = items-1 ; i > 0 ; --i) {
+	    GvSV(PL_defgv) = args[i];
+	    MULTICALL;
+	    if (SvTRUE(*PL_stack_sp)) {
+		/* see comment in indexes() */
+		SvREFCNT_inc(RETVAL = *PL_stack_sp);
 		break;
 	    }
 	}
@@ -1046,162 +1015,6 @@ CODE:
     XSRETURN(j);
 }
 
-SV *
-lastval (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    RETVAL = &PL_sv_undef;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items > 1) {
-	_cv = sv_2cv(code, &stash, &gv, 0);
-	PUSH_MULTICALL(_cv);
-	SAVESPTR(GvSV(PL_defgv));
-
-	for (i = items-1 ; i > 0 ; --i) {
-	    GvSV(PL_defgv) = args[i];
-	    MULTICALL;
-	    if (SvTRUE(*PL_stack_sp)) {
-		/* see comment in indexes() */
-		SvREFCNT_inc(RETVAL = args[i]);
-		break;
-	    }
-	}
-	POP_MULTICALL;
-    }
-}
-OUTPUT:
-    RETVAL
-
-SV *
-firstval (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    RETVAL = &PL_sv_undef;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items > 1) {
-	_cv = sv_2cv(code, &stash, &gv, 0);
-	PUSH_MULTICALL(_cv);
-	SAVESPTR(GvSV(PL_defgv));
-
-	for (i = 1; i < items; ++i) {
-	    GvSV(PL_defgv) = args[i];
-	    MULTICALL;
-	    if (SvTRUE(*PL_stack_sp)) {
-		/* see comment in indexes() */
-		SvREFCNT_inc(RETVAL = args[i]);
-		break;
-	    }
-	}
-	POP_MULTICALL;
-    }
-}
-OUTPUT:
-    RETVAL
-
-SV *
-lastres (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    RETVAL = &PL_sv_undef;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items > 1) {
-	_cv = sv_2cv(code, &stash, &gv, 0);
-	PUSH_MULTICALL(_cv);
-	SAVESPTR(GvSV(PL_defgv));
-
-	for (i = items-1 ; i > 0 ; --i) {
-	    GvSV(PL_defgv) = args[i];
-	    MULTICALL;
-	    if (SvTRUE(*PL_stack_sp)) {
-		/* see comment in indexes() */
-		SvREFCNT_inc(RETVAL = *PL_stack_sp);
-		break;
-	    }
-	}
-	POP_MULTICALL;
-    }
-}
-OUTPUT:
-    RETVAL
-
-SV *
-firstres (code, ...)
-    SV *code;
-PROTOTYPE: &@
-CODE:
-{
-    dMULTICALL;
-    int i;
-    HV *stash;
-    GV *gv;
-    I32 gimme = G_SCALAR;
-    SV **args = &PL_stack_base[ax];
-    CV *_cv;
-
-    RETVAL = &PL_sv_undef;
-
-    if(!codelike(code))
-       croak_xs_usage(cv,  "code, ...");
-
-    if (items > 1) {
-	_cv = sv_2cv(code, &stash, &gv, 0);
-	PUSH_MULTICALL(_cv);
-	SAVESPTR(GvSV(PL_defgv));
-
-	for (i = 1; i < items; ++i) {
-	    GvSV(PL_defgv) = args[i];
-	    MULTICALL;
-	    if (SvTRUE(*PL_stack_sp)) {
-		/* see comment in indexes() */
-		SvREFCNT_inc(RETVAL = *PL_stack_sp);
-		break;
-	    }
-	}
-	POP_MULTICALL;
-    }
-}
-OUTPUT:
-    RETVAL
-
 void
 _array_iterator (method = "")
     char *method;
@@ -1356,6 +1169,10 @@ pairwise (code, ...)
 	if(!arraylike(ST(2)))
 	   croak_xs_usage(cv,  "code, list, list");
 
+	if (in_pad(code)) {
+	    croak("Can't use lexical $a or $b in pairwise code block");
+	}
+
 	/* deref AV's for convenience and
 	 * get maximum items */
 	avs[0] = (AV*)SvRV(ST(1));
@@ -1506,31 +1323,121 @@ uniq (...)
     PROTOTYPE: @
     CODE:
     {
-	int i, count = 0;
+	I32 i;
+	IV count = 0, seen_undef = 0;
 	HV *hv = newHV();
+        SV **args = &PL_stack_base[ax];
+	SV *tmp = sv_newmortal();
 	sv_2mortal(newRV_noinc((SV*)hv));
 
 	/* don't build return list in scalar context */
 	if (GIMME_V == G_SCALAR) {
 	    for (i = 0; i < items; i++) {
-		if (!hv_exists_ent(hv, ST(i), 0)) {
-		    count++;
-		    hv_store_ent(hv, ST(i), &PL_sv_yes, 0);
+		if(SvOK(args[i])) {
+		    sv_setsv_mg(tmp, args[i]);
+		    if (!hv_exists_ent(hv, tmp, 0)) {
+			++count;
+			hv_store_ent(hv, tmp, &PL_sv_yes, 0);
+		    }
+		}
+		else if(0 == seen_undef++) {
+		    ++count;
 		}
 	    }
-	    ST(0) = sv_2mortal(newSViv(count));
+	    ST(0) = sv_2mortal(newSVuv(count));
 	    XSRETURN(1);
 	}
 
 	/* list context: populate SP with mortal copies */
 	for (i = 0; i < items; i++) {
-	    if (!hv_exists_ent(hv, ST(i), 0)) {
-		ST(count) = sv_2mortal(newSVsv(ST(i)));
-		count++;
-		hv_store_ent(hv, ST(i), &PL_sv_yes, 0);
+	    if(SvOK(args[i])) {
+		sv_setsv_mg(tmp, args[i]);
+		if (!hv_exists_ent(hv, tmp, 0)) {
+		    /* ST(count) = sv_2mortal(newSVsv(ST(i))); */
+		    args[count++] = args[i];
+		    hv_store_ent(hv, tmp, &PL_sv_yes, 0);
+		}
+	    }
+	    else if(0 == seen_undef++) {
+		args[count++] = args[i];
 	    }
 	}
+
 	XSRETURN(count);
+    }
+
+void
+singleton (...)
+    PROTOTYPE: @
+    CODE:
+    {
+	I32 i;
+	IV cnt = 0, count = 0, seen_undef = 0;
+	HV *hv = newHV();
+        SV **args = &PL_stack_base[ax];
+	SV *tmp = sv_newmortal();
+
+	sv_2mortal(newRV_noinc((SV*)hv));
+
+	for (i = 0; i < items; i++) {
+	    if(SvOK(args[i])) {
+		sv_setsv_mg(tmp, args[i]);
+		HE *he = hv_fetch_ent(hv, tmp, 0, 0);
+		if (NULL == he) {
+		    /* ST(count) = sv_2mortal(newSVsv(ST(i))); */
+		    args[count++] = args[i];
+		    hv_store_ent(hv, tmp, newSViv(1), 0);
+		}
+		else {
+		    SV *v = he->he_valu.hent_val;
+		    IV how_many = SvIVX(v);
+		    sv_setiv(v, ++how_many);
+		}
+	    }
+	    else if(0 == seen_undef++) {
+		args[count++] = args[i];
+	    }
+	}
+
+	/* don't build return list in scalar context */
+	if (GIMME_V == G_SCALAR) {
+	    for (i = 0; i < count; i++) {
+		if(SvOK(args[i])) {
+		    sv_setsv_mg(tmp, args[i]);
+		    HE *he = hv_fetch_ent(hv, tmp, 0, 0);
+		    if (he) {
+			SV *v = he->he_valu.hent_val;
+			IV how_many = SvIVX(v);
+			if( 1 == how_many )
+			    ++cnt;
+		    }
+		}
+		else if(1 == seen_undef) {
+		    ++cnt;
+		}
+	    }
+	    ST(0) = sv_2mortal(newSViv(cnt));
+	    XSRETURN(1);
+	}
+
+	/* list context: populate SP with mortal copies */
+	for (i = 0; i < count; i++) {
+	    if(SvOK(args[i])) {
+		sv_setsv_mg(tmp, args[i]);
+		HE *he = hv_fetch_ent(hv, tmp, 0, 0);
+		if (he) {
+		    SV *v = he->he_valu.hent_val;
+		    IV how_many = SvIVX(v);
+		    if( 1 == how_many )
+			args[cnt++] = args[i];
+		}
+	    }
+	    else if(1 == seen_undef) {
+		args[cnt++] = args[i];
+	    }
+	}
+
+	XSRETURN(cnt);
     }
 
 void
@@ -1783,6 +1690,60 @@ CODE:
         XSRETURN_UNDEF;
 yes:
     ;
+}
+OUTPUT:
+    RETVAL
+
+int
+bsearchidx (code, ...)
+    SV *code;
+PROTOTYPE: &@
+CODE:
+{
+    dMULTICALL;
+    HV *stash;
+    GV *gv;
+    I32 gimme = GIMME_V; /* perl-5.5.4 bus-errors out later when using GIMME
+                            therefore we save its value in a fresh variable */
+    SV **args = &PL_stack_base[ax];
+
+    long i, j;
+    int val = -1;
+
+    if(!codelike(code))
+       croak_xs_usage(cv,  "code, ...");
+
+    RETVAL = -1;
+
+    if (items > 1) {
+	CV *_cv = sv_2cv(code, &stash, &gv, 0);
+	PUSH_MULTICALL(_cv);
+	SAVESPTR(GvSV(PL_defgv));
+
+        i = 0;
+        j = items - 1;
+        do {
+            long k = (i + j) / 2;
+
+            if (k >= items-1)
+                break;
+
+            GvSV(PL_defgv) = args[1+k];
+            MULTICALL;
+            val = SvIV(*PL_stack_sp);
+
+            if (val == 0) {
+                RETVAL = k;
+                break;
+            }
+            if (val < 0) {
+                i = k+1;
+            } else {
+                j = k-1;
+            }
+        } while (i <= j);
+        POP_MULTICALL;
+    }
 }
 OUTPUT:
     RETVAL
