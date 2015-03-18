@@ -124,6 +124,12 @@ typedef AV PAD;
 # define PadnameOUTER(pn)       !!SvFAKE(pn)
 # define PadnamePV(pn)          (SvPOKp(pn) ? SvPVX(pn) : NULL)
 #endif
+#ifndef PadnameSV
+# define PadnameSV(pn)          pn
+#endif
+#ifndef PadnameFLAGS
+# define PadnameFLAGS(pn)       (SvFLAGS(PadnameSV(pn)))
+#endif
 
 static int 
 in_pad (SV *code)
@@ -148,7 +154,7 @@ in_pad (SV *code)
 		    continue;
 #               endif
 
-		if (!SvOK(name_sv))
+		if (!(PadnameFLAGS(name_sv)) & SVf_OK)
 		    continue;
 
 		if (strEQ(name_str, "$a") || strEQ(name_str, "$b"))
@@ -1351,9 +1357,15 @@ uniq (...)
 	/* list context: populate SP with mortal copies */
 	for (i = 0; i < items; i++) {
 	    if(SvOK(args[i])) {
-		sv_setsv_mg(tmp, args[i]);
+#if defined(SvSetMagicSV_nosteal)
+		if(SvTEMP(args[i]))
+		    SvSetMagicSV_nosteal(tmp, args[i]);
+		else
+#endif
+		    sv_setsv_mg(tmp, args[i]);
 		if (!hv_exists_ent(hv, tmp, 0)) {
-		    /* ST(count) = sv_2mortal(newSVsv(ST(i))); */
+		    /*ST(count) = sv_2mortal(newSVsv(ST(i)));
+		    ++count;*/
 		    args[count++] = args[i];
 		    hv_store_ent(hv, tmp, &PL_sv_yes, 0);
 		}
@@ -1381,7 +1393,12 @@ singleton (...)
 
 	for (i = 0; i < items; i++) {
 	    if(SvOK(args[i])) {
-		sv_setsv_mg(tmp, args[i]);
+#if defined(SvSetMagicSV_nosteal)
+		if(SvTEMP(args[i]))
+		    SvSetMagicSV_nosteal(tmp, args[i]);
+		else
+#endif
+		    sv_setsv_mg(tmp, args[i]);
 		HE *he = hv_fetch_ent(hv, tmp, 0, 0);
 		if (NULL == he) {
 		    /* ST(count) = sv_2mortal(newSVsv(ST(i))); */
@@ -1389,7 +1406,7 @@ singleton (...)
 		    hv_store_ent(hv, tmp, newSViv(1), 0);
 		}
 		else {
-		    SV *v = he->he_valu.hent_val;
+		    SV *v = HeVAL(he);
 		    IV how_many = SvIVX(v);
 		    sv_setiv(v, ++how_many);
 		}
@@ -1406,7 +1423,7 @@ singleton (...)
 		    sv_setsv_mg(tmp, args[i]);
 		    HE *he = hv_fetch_ent(hv, tmp, 0, 0);
 		    if (he) {
-			SV *v = he->he_valu.hent_val;
+			SV *v = HeVAL(he);
 			IV how_many = SvIVX(v);
 			if( 1 == how_many )
 			    ++cnt;
@@ -1423,10 +1440,15 @@ singleton (...)
 	/* list context: populate SP with mortal copies */
 	for (i = 0; i < count; i++) {
 	    if(SvOK(args[i])) {
-		sv_setsv_mg(tmp, args[i]);
+#if defined(SvSetMagicSV_nosteal)
+		if(SvTEMP(args[i]))
+		    SvSetMagicSV_nosteal(tmp, args[i]);
+		else
+#endif
+		    sv_setsv_mg(tmp, args[i]);
 		HE *he = hv_fetch_ent(hv, tmp, 0, 0);
 		if (he) {
-		    SV *v = he->he_valu.hent_val;
+		    SV *v = HeVAL(he);
 		    IV how_many = SvIVX(v);
 		    if( 1 == how_many )
 			args[cnt++] = args[i];

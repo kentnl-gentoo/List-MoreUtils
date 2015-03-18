@@ -92,7 +92,7 @@ Config::AutoConf - A module to implement some of AutoConf macros in pure perl.
 
 =cut
 
-our $VERSION = '0.310';
+our $VERSION = '0.311';
 $VERSION = eval $VERSION;
 
 =head1 ABSTRACT
@@ -130,7 +130,7 @@ with Perl, several mini-computers have Perl and even lot's of Windows
 machines run Perl software - which requires deployed Perl there, too),
 this gives wider support than Shell based probes.
 
-The API is leant against GNU Autoconf, but we try to make the API
+The API is leaned against GNU Autoconf, but we try to make the API
 (especially optional arguments) more Perl'ish than m4 abilities allow
 to the original.
 
@@ -561,7 +561,7 @@ sub check_prog_pkg_config
 
 =head2 check_prog_cc
 
-This function checks if you have a runable C compiler.
+Determine a C compiler to use. Currently the probe is delegated to L<ExtUtils::CBuilder>.
 
 =cut
 
@@ -2133,6 +2133,8 @@ which are used prior to the aggregate under test.
     }
   );
 
+This function will return a true value (1) if the member is found.
+
 If I<aggregate> aggregate has I<member> member, preprocessor
 macro HAVE_I<aggregate>_I<MEMBER> (in all capitals, with spaces
 and dots replaced by underscores) is defined.
@@ -2162,7 +2164,7 @@ sub check_member
     my $type = $1;
     $member = $2;
 
-    my $cache_name = $self->_cache_type_name( "member", $type );
+    my $cache_name = $self->_cache_type_name( "$type.$member" );
     my $check_sub = sub {
 
         my $body = <<ACEOF;
@@ -2180,9 +2182,9 @@ ACEOF
             }
         );
         $self->define_var(
-            _have_member_define_name($member),
+            _have_member_define_name("$type.$member"),
             $have_member ? $have_member : undef,
-            "defined when $member is available"
+            "defined when $type.$member is available"
         );
         $have_member;
     };
@@ -2201,6 +2203,8 @@ ACEOF
 =head2 check_members( members, \%options? )
 
 For each member L<check_member> is called to check for member of aggregate.
+
+This function will return a true value (1) if at least one member is found.
 
 If the very last parameter contains a hash reference, C<CODE> references
 to I<action_on_true> or I<action_on_false> are executed, respectively.
@@ -2227,10 +2231,10 @@ sub check_members
     defined $options->{action_on_cache_true}  and $pass_options{action_on_cache_true}  = $options->{action_on_cache_true};
     defined $options->{action_on_cache_false} and $pass_options{action_on_cache_false} = $options->{action_on_cache_false};
 
-    my $have_members = 1;
+    my $have_members = 0;
     foreach my $member (@$members)
     {
-        $have_members &= !!(
+         $have_members |= (
             $self->check_member(
                 $member,
                 {
@@ -2379,7 +2383,7 @@ when each header can be used -- otherwise false.
 If the very last parameter contains a hash reference, C<CODE> references
 to I<action_on_true> or I<action_on_false> are executed, respectively.
 Each of existing key/value pairs using I<prologue>, I<action_on_cache_true>
-or I<action_on_cache_false> as key are passed throuh to each call of
+or I<action_on_cache_false> as key are passed-through to each call of
 L</check_header>.
 Given callbacks for I<action_on_header_true> or I<action_on_header_false> are
 called for each symbol checked using L</check_header> receiving the symbol as
@@ -2524,7 +2528,7 @@ to I<action_on_true> or I<action_on_false> are executed, respectively.
 Each of existing key/value pairs using I<prologue>, I<action_on_header_true>
 (as I<action_on_true> having the name of the tested header as first argument)
 or I<action_on_header_false> (as I<action_on_false> having the name of the
-tested header as first argument) as key are passed throuh to each call of
+tested header as first argument) as key are passed-through to each call of
 L</_check_header>.
 Given callbacks for I<action_on_cache_true> or I<action_on_cache_false> are
 passed to the call of L</check_cached>.
@@ -2975,8 +2979,8 @@ I<action_on_func_false> (as I<action_on_false> having the name of the tested
 functions as first argument), I<action_on_func_lib_true> (as
 I<action_on_lib_true> having the name of the tested functions as first
 argument), I<action_on_func_lib_false> (as I<action_on_lib_false> having
-the name of the tested functions as first argument) as key are passed
-throuh to each call of L</search_libs>.
+the name of the tested functions as first argument) as key are passed-
+through to each call of L</search_libs>.
 Given callbacks for I<action_on_lib_true>, I<action_on_lib_false>,
 I<action_on_cache_true> or I<action_on_cache_false> are passed to the
 call of L</search_libs>.

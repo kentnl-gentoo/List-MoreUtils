@@ -883,7 +883,7 @@ sub test_pairwise
         my ( $a, $b, @t );
         my @l1 = ( 1 .. 10 );
         @t = pairwise { $a + $b } @l1, @l1;
-        like( join( "", @warns[ 0, 1 ] ), qr/Use of uninitialized value \$(?:a|b) in addition/, "warning on broken caller" );
+        like( join( "", @warns[ 0, 1 ] ), qr/Use of uninitialized value.*? in addition/, "warning on broken caller" );
     }
 
     is_dying( sub { &pairwise( 42, \@a, \@b ); } );
@@ -1026,45 +1026,45 @@ sub test_uniq
 {
   SCOPE:
     {
-        my @a = map { ( 1 .. 1000 ) } 0 .. 1;
+        my @a = map { ( 1 .. 10 ) } 0 .. 1;
         my @u = uniq @a;
-        is_deeply( \@u, [ 1 .. 1000 ] );
+        is_deeply( \@u, [ 1 .. 10 ] );
         my $u = uniq @a;
-        is( 1000, $u );
+        is( 10, $u );
     }
 
     # Test aliases
   SCOPE:
     {
-        my @a = map { ( 1 .. 1000 ) } 0 .. 1;
+        my @a = map { ( 1 .. 10 ) } 0 .. 1;
         my @u = distinct @a;
-        is_deeply( \@u, [ 1 .. 1000 ] );
+        is_deeply( \@u, [ 1 .. 10 ] );
         my $u = distinct @a;
-        is( 1000, $u );
+        is( 10, $u );
     }
 
     # Test strings
   SCOPE:
     {
-        my @a = map { ( "aa" .. "zz" ) } 0 .. 1;
+        my @a = map { ( "a" .. "z" ) } 0 .. 1;
         my @u = uniq @a;
-        is_deeply( \@u, [ "aa" .. "zz" ] );
+        is_deeply( \@u, [ "a" .. "z" ] );
         my $u = uniq @a;
-        is( 26 * 26, $u );
+        is( 26, $u );
     }
 
     # Test mixing strings and numbers
   SCOPE:
     {
-        my @a  = ( ( map { ( 1 .. 1000 ) } 0 .. 1 ), ( map { ( "aa" .. "zz" ) } 0 .. 1 ) );
+        my @a  = ( ( map { ( 1 .. 10 ) } 0 .. 1 ), ( map { ( "a" .. "z" ) } 0 .. 1 ) );
         my $fa = freeze( \@a );
-        my @u  = uniq @a;
+        my @u  = uniq map { $_ } @a;
         my $fu = freeze( \@u );
-        is_deeply( \@u, [ 1 .. 1000, "aa" .. "zz" ] );
+        is_deeply( \@u, [ 1 .. 10, "a" .. "z" ] );
         is( $fa, freeze( \@a ) );
-        is( $fu, freeze( [ 1 .. 1000, "aa" .. "zz" ] ) );
+        is( $fu, freeze( [ 1 .. 10, "a" .. "z" ] ) );
         my $u = uniq @a;
-        is( 1000 + 26 * 26, $u );
+        is( 10 + 26, $u );
     }
 
   SCOPE:
@@ -1131,7 +1131,7 @@ sub test_singleton
         my @d  = map { ( 1 .. 1000, "aa" .. "zz" ) } 0 .. 1;
         my @a  = ( @d, @s );
         my $fa = freeze( \@a );
-        my @u  = singleton @a;
+        my @u  = singleton map { $_ } @a;
         my $fu = freeze( \@u );
         is_deeply( \@u, [@s] );
         is( $fs, freeze( \@s ) );
@@ -1139,7 +1139,6 @@ sub test_singleton
         is( $fu, $fs );
         my $u = singleton @a;
         is( scalar @s, $u );
-
     }
 
   SCOPE:
