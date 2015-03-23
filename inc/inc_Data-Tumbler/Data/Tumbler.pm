@@ -177,7 +177,7 @@ the existing context and the new value. The default is shown in the example abov
 use Storable qw(dclone);
 use Carp qw(confess);
 
-our $VERSION = '0.008';
+our $VERSION = '0.009_002';
 
 =head1 METHODS
 
@@ -272,6 +272,55 @@ sub tumble {
 1;
 
 __END__
+
+=head1 BUGS
+
+Please report any bugs or feature requests to
+C<bug-Data-Tumbler at rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Tumbler>.
+I will be notified, and then you'll automatically be notified of progress
+on your bug as I make changes.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc Data::Tumbler
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Data-Tumbler>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Data-Tumbler>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Data-Tumbler>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Data-Tumbler/>
+
+=back
+
+=head1 AUTHOR
+
+Tim Bunce, C<< <timb at cpan.org> >>
+
+=head1 ACKNOWLEDGEMENTS
+
+This module has been created to support DBI::Test in design and separation
+of concerns.
+
+=head1 COPYRIGHT
+
+Copyright 2014-2015 Tim Bunce and Perl5 DBI Team.
 
 =head1 LICENSE
 
