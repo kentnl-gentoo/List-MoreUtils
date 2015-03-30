@@ -74,7 +74,7 @@
          }
       }
    },
-   "release_status" : "testing",
+   "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
          "mailto" : "bug-List-MoreUtils@rt.cpan.org",
@@ -90,5 +90,5 @@
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.409_003"
+   "version" : "0.410"
 }
