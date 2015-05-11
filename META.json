@@ -28,8 +28,6 @@
       "configure" : {
          "recommends" : {
             "Config::AutoConf" : "0.308",
-            "JSON::PP" : "0",
-            "Test::WriteVariants" : "0.010",
             "inc::latest" : "0.500"
          },
          "requires" : {
@@ -74,7 +72,7 @@
          }
       }
    },
-   "release_status" : "stable",
+   "release_status" : "testing",
    "resources" : {
       "bugtracker" : {
          "mailto" : "bug-List-MoreUtils@rt.cpan.org",
@@ -90,5 +88,5 @@
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.410"
+   "version" : "0.411_001"
 }

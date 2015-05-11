@@ -6,7 +6,7 @@ use warnings;
 
 BEGIN
 {
-    our $VERSION = '0.410';
+    our $VERSION = '0.411_001';
 }
 
 use Exporter::Tiny qw();
@@ -734,6 +734,14 @@ This module attempts to use few non-core dependencies. Non-core
 configuration and testing modules will be bundled when reasonable;
 run-time dependencies will be added only if they deliver substantial
 benefit.
+
+=head1 CONTRIBUTING
+
+While contributions are appreciated, a contribution should not cause more
+effort for the maintainer than the contribution itself saves (see
+L<Open Source Contribution Etiquette|http://tirania.org/blog/archive/2010/Dec-31.html>).
+
+To get more familiar where help could be needed - see L<List::MoreUtils::Contributing>.
 
 =head1 BUGS
 

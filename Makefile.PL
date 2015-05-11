@@ -5,28 +5,9 @@ use warnings;
 
 require 5.006;
 
-use File::Basename qw(dirname);
-use File::Copy qw(copy move);
-use File::Spec ();
-
 BEGIN
 {
-    use inc::latest 'JSON::PP';
-
-    eval "use Storable qw();";
-    $@ and eval <<'EODC';
-$INC{'Storable.pm'} = 'faked';
-package Storable;
-use base "Exporter";
-use JSON::PP qw();
-our @EXPORT = qw(dclone);
-sub dclone {
-    my $json = JSON::PP->new();
-    $json->decode($json->encode($_[0]));
-}
-1;
-EODC
-
+    # to operate Capture::Tiny under perl 5.6
     eval "use Scalar::Util qw();";
     $@ and eval <<'EOSU';
 $INC{'Scalar/Util.pm'} = 'faked';
@@ -67,9 +48,6 @@ sub looks_like_number {
 EOSU
 }
 
-use inc::latest 'Data::Tumbler';
-use inc::latest 'Module::Pluggable';
-use inc::latest 'Test::WriteVariants';
 use inc::latest 'Capture::Tiny';
 use inc::latest 'Config::AutoConf';
 
@@ -80,25 +58,26 @@ if ( inc::latest->can("write") )
     {
         inc::latest->bundle_module( $mod, "inc" );
     }
-    my $src = $INC{"JSON/PP.pm"};
-    $src = dirname($src);
-    $src = File::Spec->catfile( $src, qw(backportPP Compat5006.pm) );
-    -f $src and copy( $src, "inc/inc_JSON-PP/JSON/PP/" );
 }
 
-use lib 'inc';
 use ExtUtils::MakeMaker;
-use File::Path;
 
-use Config::AutoConf::LMU ();
-use Tumble                ();
+use inc::Config::AutoConf::LMU ();
 
-Config::AutoConf::LMU->_set_argv(@ARGV);    # XXX hack because we cannot construct for global use
+if ( -d ".git" )
+{
+    eval "use Sandbox::Tumble ();";
+    $@ and die $@;
+    eval "use File::Path ();";
+    File::Path->import;
+    -d 't/xs'       and rmtree('t/xs');
+    -d 't/pureperl' and rmtree('t/pureperl');
+    Sandbox::Tumble->tumble(qw(t));
+}
 
-my $loadable_xs = Config::AutoConf::LMU->check_produce_loadable_xs_build();
+inc::Config::AutoConf::LMU->_set_argv(@ARGV);    # XXX hack because we cannot construct for global use
 
--d "gt" and rmtree("gt");
-Tumble->tumble("gt");
+my $loadable_xs = inc::Config::AutoConf::LMU->check_produce_loadable_xs_build();
 
 # Should we build the XS version?
 my %RUN_DEPS = (
@@ -106,10 +85,8 @@ my %RUN_DEPS = (
     'Exporter::Tiny' => '0.038',
 );
 my %BUNDLE_CONFIGURE_DEPS = (
-    'inc::latest'         => '0.500',
-    'JSON::PP'            => 0,
-    'Test::WriteVariants' => '0.010',
-    'Config::AutoConf'    => '0.308',
+    'inc::latest'      => '0.500',
+    'Config::AutoConf' => '0.308',
 );
 my %CONFIGURE_DEPS = (
     'Carp'                => 0,
@@ -155,6 +132,8 @@ WriteMakefile1(
                     'Test::Pod::Coverage'                 => 0,
                     'Test::Pod::Spelling::CommonMistakes' => 0,
                     'Test::Spelling'                      => 0,
+                    'JSON::PP'                            => 0,
+                    'Test::WriteVariants'                 => '0.010',
                     %BUNDLE_CONFIGURE_DEPS,
                 },
             },
@@ -190,15 +169,13 @@ WriteMakefile1(
         ? (
             XS => { map { ( my $tgt = $_ ) =~ s/\.xs$/\.c/; $_ => $tgt; } @XS_FILES },
             MAGICXS => 1,
-            #OBJECT => [ map { $_ =~ s/\.xs/\.o/; $_ } @XS_FILES ],
-            #OBJECT => join(" ", map { $_ =~ s/\.xs/\.o/; $_ } @XS_FILES ),
-            INC => "-I."
+            INC     => "-I."
           )
         : ()
     ),
-    clean  => { FILES               => "inc/latest* inc/inc_* gt" },
+    ( -d ".git" ? ( realclean => { FILES => "inc/latest* inc/inc_* t/pureperl t/xs" } ) : () ),
     depend => { '$(FIRST_MAKEFILE)' => '$(VERSION_FROM)' },
-    test   => { TESTS               => 'xt/*.t gt/*/*.t gt/*/*/*.t' },
+    test   => { TESTS               => join( ' ', 't/*.t', 't/pureperl/*.t', ( $loadable_xs ? 't/xs/*.t' : () ), 'xt/*.t' ) },
     # Otherwise 'cxinc' isn't defined
     ( $] < 5.012 ? ( DEFINE => '-DPERL_EXT' ) : (), ),
 );
