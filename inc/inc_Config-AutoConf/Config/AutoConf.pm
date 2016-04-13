@@ -92,7 +92,7 @@ Config::AutoConf - A module to implement some of AutoConf macros in pure perl.
 
 =cut
 
-our $VERSION = '0.311';
+our $VERSION = '0.313';
 $VERSION = eval $VERSION;
 
 =head1 ABSTRACT
@@ -134,7 +134,7 @@ The API is leaned against GNU Autoconf, but we try to make the API
 (especially optional arguments) more Perl'ish than m4 abilities allow
 to the original.
 
-=head1 FUNCTIONS
+=head1 CONSTRUCTOR
 
 =cut
 
@@ -183,6 +183,8 @@ sub new
     );
     bless( \%instance, $class );
 }
+
+=head1 METHODS
 
 =head2 check_file
 
@@ -451,7 +453,11 @@ sub check_prog_lex
             "ac_cv_prog_lex_root",
             "for lex output file root",
             sub {
-                my ( $fh, $filename ) = tempfile( "testXXXXXX", SUFFIX => '.l' );
+                my ( $fh, $filename ) = tempfile(
+                    "testXXXXXX",
+                    SUFFIX => '.l',
+                    UNLINK => 0
+                );
                 my $src = <<'EOLEX';
 %%
 a { ECHO; }
@@ -1073,7 +1079,7 @@ sub compile_if_else
     my ( $fh, $filename ) = tempfile(
         "testXXXXXX",
         SUFFIX => '.c',
-        , UNLINK => 0
+        UNLINK => 0
     );
 
     print {$fh} $src;
@@ -1094,6 +1100,7 @@ sub compile_if_else
     };
 
     unlink $filename;
+    $obj_file and !-f $obj_file and undef $obj_file;
     unlink $obj_file if $obj_file;
 
     if ( $exception || !$obj_file )
@@ -1138,7 +1145,11 @@ sub link_if_else
 
     my $builder = $self->_get_builder();
 
-    my ( $fh, $filename ) = tempfile( "testXXXXXX", SUFFIX => '.c' );
+    my ( $fh, $filename ) = tempfile(
+        "testXXXXXX",
+        SUFFIX => '.c',
+        UNLINK => 0
+    );
 
     print {$fh} $src;
     close $fh;
@@ -1156,6 +1167,8 @@ sub link_if_else
 
         $exception = $@;
     };
+
+    $obj_file and !-f $obj_file and undef $obj_file;
 
     if ( $exception || !$obj_file )
     {
@@ -1188,6 +1201,9 @@ sub link_if_else
 
         $exception = $@;
     };
+
+    $exe_file and !-f $exe_file and undef $exe_file;
+
     unlink $filename;
     unlink $obj_file if $obj_file;
     unlink $exe_file if $exe_file;
@@ -2164,8 +2180,8 @@ sub check_member
     my $type = $1;
     $member = $2;
 
-    my $cache_name = $self->_cache_type_name( "$type.$member" );
-    my $check_sub = sub {
+    my $cache_name = $self->_cache_type_name("$type.$member");
+    my $check_sub  = sub {
 
         my $body = <<ACEOF;
   static $type check_aggr;
@@ -2173,14 +2189,29 @@ sub check_member
     return 0;
 ACEOF
         my $conftest = $self->lang_build_program( $options->{prologue}, $body );
+        my $have_member = $self->compile_if_else($conftest);
 
-        my $have_member = $self->compile_if_else(
-            $conftest,
-            {
-                ( $options->{action_on_true}  ? ( action_on_true  => $options->{action_on_true} )  : () ),
-                ( $options->{action_on_false} ? ( action_on_false => $options->{action_on_false} ) : () )
-            }
-        );
+        unless ($have_member)
+        {
+            $body = <<ACEOF;
+  static $type check_aggr;
+  if( sizeof check_aggr.$member )
+    return 0;
+ACEOF
+            $conftest = $self->lang_build_program( $options->{prologue}, $body );
+            $have_member = $self->compile_if_else($conftest);
+        }
+
+              $have_member
+          and $options->{action_on_true}
+          and ref $options->{action_on_true} eq "CODE"
+          and $options->{action_on_true}->();
+
+        $options->{action_on_false}
+          and ref $options->{action_on_false} eq "CODE"
+          and $options->{action_on_false}->()
+          unless $have_member;
+
         $self->define_var(
             _have_member_define_name("$type.$member"),
             $have_member ? $have_member : undef,
@@ -2234,7 +2265,7 @@ sub check_members
     my $have_members = 0;
     foreach my $member (@$members)
     {
-         $have_members |= (
+        $have_members |= (
             $self->check_member(
                 $member,
                 {
@@ -3217,7 +3248,7 @@ sub _check_pureperl_required
 
 =head2 check_pureperl_required
 
-This check method proves whether a pureperl build is wanted or not by
+This check method proves whether a pure perl build is wanted or not by
 cached-checking C<< $self->_check_pureperl_required >>.
 
 =cut
@@ -3238,7 +3269,7 @@ following checks in given order:
 
 =item *
 
-check pureperl environment variables (L</check_pureperl_required>) or
+check pure perl environment variables (L</check_pureperl_required>) or
 command line arguments and return false when pure perl is requested
 
 =item *
@@ -3266,7 +3297,8 @@ sub check_produce_xs_build
     scalar @_ > 1 and ref $_[-1] eq "HASH" and $options = pop @_;
     my $self = shift->_get_instance;
     $self->check_pureperl_required() and return _on_return_callback_helper( 0, $options, "action_on_false" );
-    eval { $self->check_valid_compilers( $_[0] || [qw(C)] ) } or return _on_return_callback_helper( 0, $options, "action_on_false" );
+    eval { $self->check_valid_compilers( $_[0] || [qw(C)] ) }
+      or return _on_return_callback_helper( 0, $options, "action_on_false" );
     # XXX necessary check for $Config{useshrlib}? (need to dicuss with eg. TuX, 99% likely return 0)
     $self->check_compile_perlapi_or_die();
 
@@ -3697,7 +3729,7 @@ L<http://annocpan.org/dist/Config-AutoConf>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/l/Config-AutoConf>
+L<http://cpanratings.perl.org/dist/Config-AutoConf>
 
 =item * MetaCPAN
 
@@ -3719,7 +3751,7 @@ Peter Rabbitson for help on refactoring and making the API more Perl'ish
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2004-2015 by the Authors
+Copyright 2004-2016 by the Authors
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
