@@ -6,7 +6,7 @@
       "Jens Rehsack <rehsack@cpan.org>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 7.14, CPAN::Meta::Converter version 2.150005",
+   "generated_by" : "ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
@@ -23,27 +23,17 @@
    },
    "prereqs" : {
       "build" : {
-         "requires" : {}
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0"
+         }
       },
       "configure" : {
-         "recommends" : {
-            "Config::AutoConf" : "0.308",
-            "inc::latest" : "0.500"
-         },
          "requires" : {
-            "Carp" : "0",
-            "ExtUtils::MakeMaker" : "0",
-            "File::Basename" : "0",
-            "File::Copy" : "0",
-            "File::Path" : "0",
-            "File::Spec" : "0",
-            "IPC::Cmd" : "0",
-            "base" : "0"
+            "ExtUtils::MakeMaker" : "0"
          }
       },
       "develop" : {
          "requires" : {
-            "Config::AutoConf" : "0.308",
             "JSON::PP" : "0",
             "Module::CPANTS::Analyse" : "0.96",
             "Test::CPAN::Changes" : "0",
@@ -53,14 +43,12 @@
             "Test::Pod::Coverage" : "0",
             "Test::Pod::Spelling::CommonMistakes" : "0",
             "Test::Spelling" : "0",
-            "Test::WriteVariants" : "0.010",
-            "inc::latest" : "0.500"
+            "Test::WriteVariants" : "0.010"
          }
       },
       "runtime" : {
          "requires" : {
-            "Exporter::Tiny" : "0.038",
-            "XSLoader" : "0.22"
+            "Exporter::Tiny" : "0.038"
          }
       },
       "test" : {
@@ -72,22 +60,19 @@
          }
       }
    },
-   "release_status" : "stable",
+   "release_status" : "unstable",
    "resources" : {
       "bugtracker" : {
          "mailto" : "bug-List-MoreUtils@rt.cpan.org",
          "web" : "https://rt.cpan.org/Dist/Display.html?Name=List-MoreUtils"
       },
       "homepage" : "https://metacpan.org/release/List-MoreUtils",
-      "license" : [
-         "http://dev.perl.org/licenses/"
-      ],
       "repository" : {
          "type" : "git",
          "url" : "https://github.com/perl5-utils/List-MoreUtils.git",
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.416",
-   "x_serialization_backend" : "JSON::PP version 2.27400"
+   "version" : "0.417_001",
+   "x_serialization_backend" : "JSON::PP version 2.27400_02"
 }

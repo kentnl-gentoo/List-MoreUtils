@@ -1,13 +1,20 @@
 package List::MoreUtils;
 
-use 5.006;
+use 5.008_001;
 use strict;
 use warnings;
 
+my $have_xs;
+
 BEGIN
 {
-    our $VERSION = '0.416';
-    eval { require List::MoreUtils::XS; } unless $ENV{LIST_MOREUTILS_PP};
+    our $VERSION = '0.417_001';
+    unless (defined($have_xs))
+    {
+        eval { require List::MoreUtils::XS; } unless $ENV{LIST_MOREUTILS_PP};
+        die $@ if $@ && defined $ENV{LIST_MOREUTILS_PP} && $ENV{LIST_MOREUTILS_PP} == 0;
+        $have_xs = 0+defined( $INC{'List/MoreUtils/XS.pm'});
+    }
 
     use List::MoreUtils::PP qw();
 }
@@ -35,10 +42,18 @@ my @v0_400 = qw(one any_u all_u none_u notall_u one_u
   singleton bsearchidx
 );
 
-my @all_functions = ( @junctions, @v0_22, @v0_24, @v0_33, @v0_400 );
+my @all_functions = (@junctions, @v0_22, @v0_24, @v0_33, @v0_400);
 
 no strict "refs";
-List::MoreUtils->can($_) or *$_ = List::MoreUtils::PP->can($_) for(@all_functions);
+if ($have_xs)
+{
+    my $x;
+    for (@all_functions)
+    {
+        List::MoreUtils->can($_) or *$_ = $x if ($x = List::MoreUtils::XS->can($_));
+    }
+}
+List::MoreUtils->can($_) or *$_ = List::MoreUtils::PP->can($_) for (@all_functions);
 use strict;
 
 my %alias_list = (
@@ -63,42 +78,42 @@ my %alias_list = (
 );
 
 our @ISA         = qw(Exporter::Tiny);
-our @EXPORT_OK   = ( @all_functions, map { keys %$_ } values %alias_list );
+our @EXPORT_OK   = (@all_functions, map { keys %$_ } values %alias_list);
 our %EXPORT_TAGS = (
     all         => \@EXPORT_OK,
     'like_0.22' => [
-        any_u    => { -as => 'any' },
-        all_u    => { -as => 'all' },
-        none_u   => { -as => 'none' },
-        notall_u => { -as => 'notall' },
+        any_u    => {-as => 'any'},
+        all_u    => {-as => 'all'},
+        none_u   => {-as => 'none'},
+        notall_u => {-as => 'notall'},
         @v0_22,
-        keys %{ $alias_list{v0_22} },
+        keys %{$alias_list{v0_22}},
     ],
     'like_0.24' => [
-        any_u    => { -as => 'any' },
-        all_u    => { -as => 'all' },
-        notall_u => { -as => 'notall' },
+        any_u    => {-as => 'any'},
+        all_u    => {-as => 'all'},
+        notall_u => {-as => 'notall'},
         'none',
         @v0_22,
         @v0_24,
-        keys %{ $alias_list{v0_22} },
+        keys %{$alias_list{v0_22}},
     ],
     'like_0.33' => [
         @junctions,
         @v0_22,
         # v0_24 functions were omitted
         @v0_33,
-        keys %{ $alias_list{v0_22} },
-        keys %{ $alias_list{v0_33} },
+        keys %{$alias_list{v0_22}},
+        keys %{$alias_list{v0_33}},
     ],
 );
 
-for my $set ( values %alias_list )
+for my $set (values %alias_list)
 {
-    for my $alias ( keys %$set )
+    for my $alias (keys %$set)
     {
         no strict qw(refs);
-        *$alias = __PACKAGE__->can( $set->{$alias} );
+        *$alias = __PACKAGE__->can($set->{$alias});
     }
 }
 
@@ -405,10 +420,10 @@ scalar context, returns the number of unique elements in LIST.
   my $x = uniq 1, 1, 2, 2, 3, 5, 3, 4; # returns 5
   # returns "Mike", "Michael", "Richard", "Rick"
   my @n = distinct "Mike", "Michael", "Richard", "Rick", "Michael", "Rick"
-  # returns '', 'S1', A5' and complains about "Use of uninitialized value"
-  my @s = distinct '', undef, 'S1', 'A5'
-  # returns undef, 'S1', A5' and complains about "Use of uninitialized value"
-  my @w = uniq undef, '', 'S1', 'A5'
+  # returns "A8", "", undef, "A5", "S1"
+  my @s = distinct "A8", "", undef, "A5", "S1", "A5", "A8"
+  # returns "Giulia", "Giulietta", undef, "", 156, "GTA", "GTV", 159, "Brera", "4C"
+  my @w = uniq "Giulia", "Giulietta", undef, "", 156, "GTA", "GTV", 159, "Brera", "4C", "Giulietta", "Giulia"
 
 C<distinct> is an alias for C<uniq>.
 
@@ -909,16 +924,6 @@ my mailbox. This includes:
 
 =over 4
 
-=item * List::Util export pass-through
-
-Allow B<List::MoreUtils> to pass-through the regular L<List::Util>
-functions to end users only need to C<use> the one module.
-
-=item * uniq_by(&@)
-
-Use code-reference to extract a key based on which the uniqueness is
-determined. Suggested by Aaron Crane.
-
 =item * delete_index
 
 =item * random_item
@@ -960,11 +965,19 @@ Some parts copyright 2011 Aaron Crane.
 
 Copyright 2004 - 2010 by Tassilo von Parseval
 
-Copyright 2013 - 2016 by Jens Rehsack
+Copyright 2013 - 2017 by Jens Rehsack
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.4 or,
-at your option, any later version of Perl 5 you may have available.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 =cut
 
