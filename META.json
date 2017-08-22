@@ -47,7 +47,7 @@
       },
       "runtime" : {
          "recommends" : {
-            "List::MoreUtils::XS" : "0.422"
+            "List::MoreUtils::XS" : "0.423"
          },
          "requires" : {
             "Exporter::Tiny" : "0.038"
@@ -63,7 +63,7 @@
          }
       }
    },
-   "release_status" : "unstable",
+   "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
          "mailto" : "bug-List-MoreUtils@rt.cpan.org",
@@ -76,6 +76,6 @@
          "web" : "https://github.com/perl5-utils/List-MoreUtils"
       }
    },
-   "version" : "0.420_001",
+   "version" : "0.423",
    "x_serialization_backend" : "JSON::PP version 2.94"
 }

@@ -8,7 +8,7 @@ my $have_xs;
 
 BEGIN
 {
-    our $VERSION = '0.420_001';
+    our $VERSION = '0.423';
     unless (defined($have_xs))
     {
         eval { require List::MoreUtils::XS; } unless $ENV{LIST_MOREUTILS_PP};
@@ -901,6 +901,12 @@ a positive value if it is bigger and zero if it matches.
 ITEM is inserted at the index where the ITEM should be placed (based on above
 search). That means, it's inserted before the next bigger element.
 
+  @l = (2,3,5,7);
+  binsert { $_ <=> 4 }  4, @l; # @l = (2,3,4,5,7)
+  binsert { $_ <=> 6 } 42, @l; # @l = (2,3,4,42,7)
+
+You take care that the inserted element matches the compare result.
+
 =head3 bremove BLOCK LIST
 
 =head3 bsearch_remove BLOCK LIST
@@ -910,6 +916,9 @@ must return a negative value if the current element (stored in C<$_>) is smaller
 a positive value if it is bigger and zero if it matches.
 
 The item at the found position is removed and returned.
+
+  @l = (2,3,4,5,7);
+  bremove { $_ <=> 4 }, @l; # @l = (2,3,5,7);
 
 =head2 Counting and calculation
 
