@@ -8,45 +8,8 @@ use 5.008_001;
 use Config;
 use ExtUtils::MakeMaker;
 
-BEGIN
-{
-    unless (grep { $_ eq "." } @INC)
-    {
-        use lib ".";
-    }
-}
-
-use inc::latest 'Capture::Tiny';
-use inc::latest 'Config::AutoConf';
-
-if (inc::latest->can("write"))
-{
-    inc::latest->write("inc");
-    for my $mod (inc::latest->loaded_modules)
-    {
-        inc::latest->bundle_module($mod, "inc");
-    }
-}
-
-use inc::Config::AutoConf::LMU ();
-
-inc::Config::AutoConf::LMU->_set_argv(@ARGV);    # XXX hack because we cannot construct for global use
-my $loadable_xs = inc::Config::AutoConf::LMU->check_produce_loadable_xs_build();
-
-if (-d "Sandbox")
-{
-    unless (grep { $_ eq "." } @INC)
-    {
-        use lib ".";
-    }
-    eval "use Sandbox::Tumble ();";
-    $@ and die $@;
-    eval "use File::Path ();";
-    File::Path->import;
-    -d 't/xs'       and rmtree('t/xs');
-    -d 't/pureperl' and rmtree('t/pureperl');
-    Sandbox::Tumble->tumble(qw(t));
-}
+my $loadable_xs = $ENV{LMU_USE_XS} ||
+ eval { require List::MoreUtils::XS; List::MoreUtils::XS->VERSION(0.426) };
 
 my $conflictMsg = <<EOCM;
 ***
